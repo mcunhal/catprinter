@@ -124,6 +124,41 @@ main {
   overflow-y: auto;
 }
 
+/* Mobile responsive layout */
+@media (max-width: 768px) {
+  .panels {
+    flex-direction: column;
+    overflow-y: auto; /* Allow scrolling the entire page if needed */
+  }
+
+  .mode-content {
+    flex-direction: column;
+  }
+
+  .config-panel {
+    width: 100%;
+    max-width: none;
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+    /* Ensure editor has enough space but doesn't take over entirely */
+    min-height: 400px;
+    flex: 0 0 auto;
+  }
+
+  /* Make sure the editor container inside config-panel grows */
+  #editor-container {
+    min-height: 250px;
+  }
+
+  .preview-panel {
+    width: 100%;
+    min-width: 0; /* Allow shrinking below content size */
+    border-right: none;
+    flex: 1;
+    min-height: 300px;
+  }
+}
+
 /* Image config panel - Red theme */
 .image-config-panel {
   border-right-color: #e53e3e;
