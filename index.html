@@ -55,6 +55,15 @@
             <div id="textModeContent" class="mode-content active">
                 <!-- Left Panel: Editor -->
                 <section class="config-panel" style="display: flex; flex-direction: column;">
+                    <div class="config-section">
+                        <h3>Printer Settings</h3>
+                        <div class="input-group">
+                            <label for="printDensity">Print Density (Intensity)</label>
+                            <input type="range" id="printDensity" min="0" max="255" value="93">
+                            <span id="printDensityDisplay">93 (0x5D)</span>
+                        </div>
+                    </div>
+
                     <div id="editor-container" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
                         <div id="editor"></div>
                     </div>

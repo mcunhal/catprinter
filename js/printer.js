@@ -372,8 +372,9 @@ export function getLastKnownBatteryLevel() {
   return lastKnownBatteryLevel;
 }
 
-export async function printImage(canvas) {
-  logger.info('Starting print job');
+export async function printImage(canvas, options = {}) {
+  const intensity = options.intensity !== undefined ? options.intensity : 0x5D;
+  logger.info('Starting print job', { intensity });
   const startTime = Date.now();
   
   const ctx = canvas.getContext('2d');
@@ -430,7 +431,7 @@ export async function printImage(canvas) {
   try {
     // 1) Set intensity
     logger.debug('Step 1: Set print intensity');
-    await controlChar.writeValue(cmdSetIntensity());
+    await controlChar.writeValue(cmdSetIntensity(intensity));
     
     // 2) Request status (A1) and wait response
     logger.debug('Step 2: Request printer status');

@@ -19,6 +19,9 @@ const batteryIcon = document.querySelector('.battery-icon');
 const connectTextBtn = document.getElementById('connectTextBtn');
 const printTextBtn = document.getElementById('printTextBtn');
 const resetBtn = document.getElementById('resetBtn');
+// Settings
+const printDensityInput = document.getElementById('printDensity');
+const printDensityDisplay = document.getElementById('printDensityDisplay');
 // Preview
 const textPreview = document.getElementById('textPreview');
 const textPreviewContainer = document.getElementById('textPreviewContainer');
@@ -75,6 +78,14 @@ function init() {
     
     // Initialize print buttons (disabled by default)
     updatePrintButtonState();
+
+    // Listeners for Text Mode Settings
+    if (printDensityInput) {
+        printDensityInput.addEventListener('input', () => {
+            const val = parseInt(printDensityInput.value);
+            printDensityDisplay.textContent = `${val} (0x${val.toString(16).toUpperCase().padStart(2, '0')})`;
+        });
+    }
 
     // Initial preview update
     setTimeout(updateTextPreview, 500);
@@ -665,8 +676,11 @@ async function printText() {
             height: canvas.height
         });
         
+        // Get intensity from slider
+        const intensity = parseInt(printDensityInput.value) || 0x5D;
+
         // Print the image
-        await printImage(canvas);
+        await printImage(canvas, { intensity });
         
         // Show success message
         showPrintingStatus('Text printed successfully!', 'success');
