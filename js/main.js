@@ -1,13 +1,13 @@
 import { connectPrinter, printImage, getBatteryLevel, isPrinterConnected, getLastKnownBatteryLevel } from './printer.js';
-import { renderReceipt, updateReceiptPreview } from './receiptRenderer.js';
+import { renderTextToCanvas } from './textRenderer.js';
 import { logger, setupLoggerUI } from './logger.js';
 import * as imageProcessor from './imageProcessor.js';
 
 // === DOM Elements ===
 // Mode toggle
-const receiptModeBtn = document.getElementById('receiptModeBtn');
+const textModeBtn = document.getElementById('textModeBtn');
 const imageModeBtn = document.getElementById('imageModeBtn');
-const receiptModeContent = document.getElementById('receiptModeContent');
+const textModeContent = document.getElementById('textModeContent');
 const imageModeContent = document.getElementById('imageModeContent');
 
 // Battery indicator elements
@@ -15,37 +15,13 @@ const batteryIndicator = document.getElementById('batteryIndicator');
 const batteryLevel = document.getElementById('batteryLevel');
 const batteryIcon = document.querySelector('.battery-icon');
 
-// Receipt Mode Elements
-// Business info
-const businessNameInput = document.getElementById('businessName');
-const businessAddressInput = document.getElementById('businessAddress');
-const businessPhoneInput = document.getElementById('businessPhone');
-// Transaction info
-const tableNumberInput = document.getElementById('tableNumber');
-const serverNameInput = document.getElementById('serverName');
-const transactionNumberInput = document.getElementById('transactionNumber');
-const taxRateInput = document.getElementById('taxRate');
-const dateTimeField = document.getElementById('dateTimeField');
-// Items
-const itemsListContainer = document.getElementById('itemsList');
-const newItemNameInput = document.getElementById('newItemName');
-const newItemPriceInput = document.getElementById('newItemPrice');
-const addItemBtn = document.getElementById('addItemBtn');
-// Payment
-const tipAmountInput = document.getElementById('tipAmount');
-const paymentMethodSelect = document.getElementById('paymentMethod');
-const amountPaidInput = document.getElementById('amountPaid');
-const changeAmountDisplay = document.getElementById('changeAmount');
-// Footer
-const footerMessageInput = document.getElementById('footerMessage');
-// Buttons
-const connectReceiptBtn = document.getElementById('connectReceiptBtn');
-const printReceiptBtn = document.getElementById('printReceiptBtn');
+// Text Mode Elements
+const connectTextBtn = document.getElementById('connectTextBtn');
+const printTextBtn = document.getElementById('printTextBtn');
 const resetBtn = document.getElementById('resetBtn');
-// Receipt preview
-const receiptPreview = document.getElementById('receiptPreview');
-const receiptContainer = document.getElementById('receiptContainer');
-const receiptSummary = document.getElementById('receiptSummary');
+// Preview
+const textPreview = document.getElementById('textPreview');
+const textPreviewContainer = document.getElementById('textPreviewContainer');
 
 // Image Mode Elements
 const imageUploadInput = document.getElementById('imageUpload');
@@ -72,9 +48,8 @@ const clearLogBtn = document.getElementById('clearLogBtn');
 const printProgressBar = document.getElementById('printProgressBar');
 
 // === Data Store ===
-let items = [];
-let currentDateTime = new Date().toLocaleString();
-let currentMode = 'receipt'; // 'receipt' or 'image'
+let currentMode = 'text'; // 'text' or 'image'
+let quill = null;
 
 // === Battery Level Timer ===
 let batteryCheckIntervalId = null;
@@ -82,16 +57,6 @@ const BATTERY_CHECK_INTERVAL = 30000; // 30 seconds
 
 // === Initialize ===
 function init() {
-    updateDateTime();
-    setInterval(updateDateTime, 60000); // Update time every minute
-    renderItemsList();
-    updateReceiptView();
-    
-    // Add event listeners for real-time updates
-    const allReceiptInputs = document.querySelectorAll('#receiptModeContent input, #receiptModeContent textarea, #receiptModeContent select');
-    allReceiptInputs.forEach(input => {
-        input.addEventListener('input', updateReceiptView);
-    });
     
     // Initialize logger UI
     initLoggerUI();
@@ -99,6 +64,9 @@ function init() {
     // Initialize mode toggle
     setupModeToggle();
     
+    // Initialize Quill Editor
+    initQuill();
+
     // Set up image mode listeners
     setupImageModeListeners();
     
@@ -107,6 +75,33 @@ function init() {
     
     // Initialize print buttons (disabled by default)
     updatePrintButtonState();
+
+    // Initial preview update
+    setTimeout(updateTextPreview, 500);
+}
+
+// Initialize Quill Editor
+function initQuill() {
+    quill = new Quill('#editor', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'header': [1, 2, 3, false] }],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'align': [] }],
+                ['clean']
+            ]
+        },
+        placeholder: 'Type your receipt text here...'
+    });
+
+    // Listen for changes to update preview
+    quill.on('text-change', () => {
+        // Debounce update
+        if (window.previewTimeout) clearTimeout(window.previewTimeout);
+        window.previewTimeout = setTimeout(updateTextPreview, 1000);
+    });
 }
 
 // Initialize the logger UI
@@ -123,40 +118,40 @@ function initLoggerUI() {
 
 // Setup mode toggle functionality
 function setupModeToggle() {
-    receiptModeBtn.addEventListener('click', () => {
-        setActiveMode('receipt');
+    textModeBtn.addEventListener('click', () => {
+        setActiveMode('text');
     });
     
     imageModeBtn.addEventListener('click', () => {
         setActiveMode('image');
     });
     
-    // Initialize with receipt mode active
-    setActiveMode('receipt');
+    // Initialize with text mode active
+    setActiveMode('text');
 }
 
-// Set the active mode (receipt or image)
+// Set the active mode (text or image)
 function setActiveMode(mode) {
     currentMode = mode;
     
     // Update button states
-    receiptModeBtn.classList.toggle('active', mode === 'receipt');
+    textModeBtn.classList.toggle('active', mode === 'text');
     imageModeBtn.classList.toggle('active', mode === 'image');
     
     // Update content visibility
-    receiptModeContent.classList.toggle('active', mode === 'receipt');
+    textModeContent.classList.toggle('active', mode === 'text');
     imageModeContent.classList.toggle('active', mode === 'image');
     
     // Update UI specific to the mode
-    if (mode === 'receipt') {
-        updateReceiptView();
+    if (mode === 'text') {
+        updateTextPreview();
     } else {
         updateImagePreview();
     }
     
     // Change printing status style based on mode
     document.documentElement.style.setProperty('--printing-status-color', 
-        mode === 'receipt' ? '#3182ce' : '#c53030');
+        mode === 'text' ? '#3182ce' : '#c53030');
 }
 
 // Setup image mode event listeners
@@ -248,7 +243,6 @@ function setupImageModeListeners() {
 // === Drag and Drop Functionality ===
 function setupDragAndDrop() {
     const dropZone = document.getElementById('dropZone');
-    const dropMessage = document.getElementById('dropMessage');
     
     // Prevent the default behavior for these events to enable dropping
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -475,7 +469,7 @@ async function printProcessedImage() {
 // === Connection and Battery Status ===
 function setupConnectButtons() {
     // Add event listeners to both connect buttons
-    connectReceiptBtn.addEventListener('click', handleConnectPrinter);
+    connectTextBtn.addEventListener('click', handleConnectPrinter);
     connectImageBtn.addEventListener('click', handleConnectPrinter);
 }
 
@@ -483,24 +477,24 @@ function updatePrintButtonState() {
     const connected = isPrinterConnected();
     
     // Update print buttons
-    printReceiptBtn.disabled = !connected;
+    printTextBtn.disabled = !connected;
     printImageBtn.disabled = !connected;
     
     if (connected) {
-        printReceiptBtn.classList.remove('btn-secondary');
-        printReceiptBtn.classList.add('btn-primary');
+        printTextBtn.classList.remove('btn-secondary');
+        printTextBtn.classList.add('btn-primary');
         printImageBtn.classList.remove('btn-secondary');
         printImageBtn.classList.add('btn-primary');
     } else {
-        printReceiptBtn.classList.remove('btn-primary');
-        printReceiptBtn.classList.add('btn-secondary');
+        printTextBtn.classList.remove('btn-primary');
+        printTextBtn.classList.add('btn-secondary');
         printImageBtn.classList.remove('btn-primary');
         printImageBtn.classList.add('btn-secondary');
     }
     
     // Update connect buttons
     const buttonText = connected ? 'Reconnect' : 'Connect Printer';
-    connectReceiptBtn.textContent = buttonText;
+    connectTextBtn.textContent = buttonText;
     connectImageBtn.textContent = buttonText;
     
     // Start or stop battery check based on connection status
@@ -611,187 +605,42 @@ function updateBatteryIndicator(level) {
     logger.debug('Battery indicator updated', { level });
 }
 
-// === Item Management ===
-function addItem() {
-    const name = newItemNameInput.value.trim();
-    const price = parseFloat(newItemPriceInput.value) || 0;
-    
-    if (name) {
-        items.push({ name, price });
-        newItemNameInput.value = '';
-        newItemPriceInput.value = '';
-        newItemNameInput.focus();
-        renderItemsList();
-        updateReceiptView();
+// === Text Preview Management ===
+
+async function updateTextPreview() {
+    try {
+        const editorElement = document.getElementById('editor');
+        if (!editorElement) return;
+        
+        const canvas = await renderTextToCanvas(editorElement);
+        
+        // Clear current preview
+        textPreview.innerHTML = '';
+        
+        // Set up canvas for display
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+        canvas.style.imageRendering = 'pixelated';
+        canvas.style.display = 'block';
+        
+        textPreview.appendChild(canvas);
+    } catch (err) {
+        logger.warn("Failed to update text preview", {error: err.message});
     }
 }
 
-function deleteItem(index) {
-    items.splice(index, 1);
-    renderItemsList();
-    updateReceiptView();
-}
-
-function renderItemsList() {
-    itemsListContainer.innerHTML = '';
-    
-    items.forEach((item, index) => {
-        const itemRow = document.createElement('div');
-        itemRow.className = 'item-row';
-        
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'item-name';
-        nameSpan.textContent = item.name;
-        
-        const priceSpan = document.createElement('span');
-        priceSpan.className = 'item-price';
-        priceSpan.textContent = `$${item.price.toFixed(2)}`;
-        
-        const deleteBtn = document.createElement('span');
-        deleteBtn.className = 'item-delete';
-        deleteBtn.textContent = '×';
-        deleteBtn.onclick = () => deleteItem(index);
-        
-        itemRow.appendChild(nameSpan);
-        itemRow.appendChild(priceSpan);
-        itemRow.appendChild(deleteBtn);
-        
-        itemsListContainer.appendChild(itemRow);
-    });
-}
-
-// === Calculations ===
-function calculateTotals() {
-    // Calculate subtotal from items
-    const subtotal = items.reduce((sum, item) => sum + parseFloat(item.price || 0), 0);
-    const taxRate = parseFloat(taxRateInput.value) || 0;
-    const tax = subtotal * (taxRate / 100);
-    const tip = parseFloat(tipAmountInput.value) || 0;
-    const total = subtotal + tax + tip;
-    const amountPaid = parseFloat(amountPaidInput.value) || 0;
-    const change = Math.max(0, amountPaid - total);
-    
-    // Update change display
-    changeAmountDisplay.textContent = `$${change.toFixed(2)}`;
-    
-    return { subtotal, tax, tip, total, change };
-}
-
-function updateDateTime() {
-    currentDateTime = new Date().toLocaleString();
-    dateTimeField.textContent = currentDateTime;
-    updateReceiptView(); // Refresh receipt preview with new time
-}
-
-// === Receipt Management ===
-function getReceiptData() {
-    calculateTotals(); // Make sure calculations are up to date
-    
-    return {
-        businessName: businessNameInput.value,
-        businessAddress: businessAddressInput.value,
-        businessPhone: businessPhoneInput.value,
-        tableNumber: tableNumberInput.value,
-        serverName: serverNameInput.value,
-        transactionNumber: transactionNumberInput.value,
-        taxRate: parseFloat(taxRateInput.value) || 0,
-        dateTime: currentDateTime,
-        tipAmount: parseFloat(tipAmountInput.value) || 0,
-        paymentMethod: paymentMethodSelect.value,
-        amountPaid: parseFloat(amountPaidInput.value) || 0,
-        footerMessage: footerMessageInput.value
-    };
-}
-
-function updateReceiptView() {
-    const receiptData = getReceiptData();
-    showBitmapPreview(receiptData, items);
-    updateReceiptSummary();
-}
-
-// Updated function for a preview that fits on screen
-async function showBitmapPreview(receiptData, items) {
-    const canvas = await renderReceipt(receiptData, items);
-    const previewContainer = document.getElementById('receiptPreview');
-    
-    // Clear current preview
-    previewContainer.innerHTML = '';
-    
-    // Set up canvas for display
-    canvas.style.width = '100%';  
-    canvas.style.height = 'auto';
-    canvas.style.imageRendering = 'pixelated';
-    canvas.style.display = 'block';
-    
-    previewContainer.appendChild(canvas);
-}
-
-// Create a detailed but compact receipt summary panel
-function updateReceiptSummary() {
-    const { subtotal, tax, tip, total, change } = calculateTotals();
-    const receiptData = getReceiptData();
-    
-    receiptSummary.innerHTML = `
-    <div class="summary-section">
-        <div class="summary-row">
-            <span>Items:</span> <span>${items.length}</span>
-        </div>
-        <div class="summary-row">
-            <span>Server:</span> <span>${receiptData.serverName}</span>
-        </div>
-        <div class="summary-row">
-            <span>Table:</span> <span>${receiptData.tableNumber}</span>
-        </div>
-    </div>
-    <div class="summary-section">
-        <div class="summary-row">
-            <span>Subtotal:</span> <span>$${subtotal.toFixed(2)}</span>
-        </div>
-        <div class="summary-row">
-            <span>Tax:</span> <span>$${tax.toFixed(2)}</span>
-        </div>
-        <div class="summary-row">
-            <span>Tip:</span> <span>$${tip.toFixed(2)}</span>
-        </div>
-        <div class="summary-row summary-total">
-            <span>Total:</span> <span>$${total.toFixed(2)}</span>
-        </div>
-    </div>
-    <div class="summary-section">
-        <div class="summary-row">
-            <span>${receiptData.paymentMethod}:</span> <span>$${receiptData.amountPaid.toFixed(2)}</span>
-        </div>
-        <div class="summary-row">
-            <span>Change:</span> <span>$${change.toFixed(2)}</span>
-        </div>
-    </div>`;
-}
-
-function resetForm() {
+function resetEditor() {
     // Confirm before resetting
-    if (confirm('Reset all receipt data? This will clear all items and reset to default values.')) {
-        items = [];
-        
-        // Reset to default values
-        businessNameInput.value = 'MY RESTAURANT';
-        businessAddressInput.value = '123 MAIN STREET\nCITY, STATE 12345';
-        businessPhoneInput.value = '(555) 123-4567';
-        tableNumberInput.value = '12';
-        serverNameInput.value = 'ALICE';
-        transactionNumberInput.value = '1234';
-        taxRateInput.value = '8.25';
-        tipAmountInput.value = '0.00';
-        paymentMethodSelect.value = 'CREDIT';
-        amountPaidInput.value = '0.00';
-        footerMessageInput.value = 'THANK YOU FOR DINING WITH US\nPLEASE COME AGAIN\nWWW.MYRESTAURANT.COM';
-        
-        renderItemsList();
-        updateReceiptView();
+    if (confirm('Clear editor content?')) {
+        if (quill) {
+            quill.setContents([]);
+        }
+        updateTextPreview();
     }
 }
 
 // === Printing ===
-async function printReceipt() {
+async function printText() {
     try {
         // Check if printer is connected
         if (!isPrinterConnected()) {
@@ -802,26 +651,25 @@ async function printReceipt() {
         }
         
         // Show printing status
-        showPrintingStatus('Printing receipt...');
+        showPrintingStatus('Printing text...');
         
         // Log print job starting
         logger.info('Starting new print job');
         
-        // Get receipt data and render to canvas
-        const receiptData = getReceiptData();
-        const canvas = await renderReceipt(receiptData, items);
+        // Get editor content and render to canvas
+        const editorElement = document.getElementById('editor');
+        const canvas = await renderTextToCanvas(editorElement);
         
-        logger.info('Receipt rendered', {
+        logger.info('Text rendered', {
             width: canvas.width,
-            height: canvas.height,
-            items: items.length
+            height: canvas.height
         });
         
         // Print the image
         await printImage(canvas);
         
         // Show success message
-        showPrintingStatus('Receipt printed successfully!', 'success');
+        showPrintingStatus('Text printed successfully!', 'success');
         setTimeout(() => hidePrintingStatus(), 3000);
     } catch (err) {
         console.error('Print error:', err);
@@ -844,7 +692,7 @@ function showPrintingStatus(message, type = 'info') {
     
     // Set color based on current mode and status type
     if (type === 'info') {
-        statusBar.style.backgroundColor = currentMode === 'receipt' ? '#3182ce' : '#c53030';
+        statusBar.style.backgroundColor = currentMode === 'text' ? '#3182ce' : '#c53030';
     } else if (type === 'success') {
         statusBar.style.backgroundColor = '#2f855a';
     } else if (type === 'error') {
@@ -863,20 +711,8 @@ function hidePrintingStatus() {
 }
 
 // === Event Listeners ===
-addItemBtn.addEventListener('click', addItem);
-newItemNameInput.addEventListener('keypress', e => {
-    if (e.key === 'Enter') {
-        addItem();
-        newItemPriceInput.focus();
-    }
-});
-newItemPriceInput.addEventListener('keypress', e => {
-    if (e.key === 'Enter') addItem();
-});
-printReceiptBtn.addEventListener('click', printReceipt);
-resetBtn.addEventListener('click', resetForm);
-amountPaidInput.addEventListener('input', calculateTotals);
-tipAmountInput.addEventListener('input', calculateTotals);
+printTextBtn.addEventListener('click', printText);
+resetBtn.addEventListener('click', resetEditor);
 
 // Initialize the app
 init();
