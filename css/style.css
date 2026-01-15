@@ -251,8 +251,8 @@ h3 {
 /* Receipt preview panel */
 .preview-panel {
   flex: 0;
-  width: 300px;
-  min-width: 300px;
+  width: 384px;
+  min-width: 384px;
   background: white;
   padding: 0.5rem;
   display: flex;
@@ -276,7 +276,7 @@ h3 {
 }
 
 /* Receipt & Image panels styling */
-#receiptModeContent .preview-header h2 {
+#textModeContent .preview-header h2 {
   color: #2b6cb0;
 }
 
@@ -293,7 +293,7 @@ h3 {
   gap: 0.5rem;
 }
 
-.receipt-wrapper {
+.preview-wrapper {
   background-color: #f0f0f0;
   padding: 0.5rem;
   flex: 1;
@@ -302,7 +302,7 @@ h3 {
   flex-direction: column;
 }
 
-.receipt-container {
+.preview-container {
   flex: 1;
   overflow-y: auto;
   overflow-x: auto;
@@ -663,7 +663,7 @@ button:disabled {
   font-weight: 500;
 }
 
-#receiptModeContent ~ .printing-status {
+#textModeContent ~ .printing-status {
   background-color: #3182ce;
 }
 
@@ -802,6 +802,32 @@ footer a:hover {
 
 .summary-total {
   font-weight: bold;
+}
+
+/* Editor Styling */
+#editor-container {
+    background: white;
+    border: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+}
+
+#editor {
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Ensure the editor simulates printer width or just responsive fill */
+/* For WYSIWYG, we ideally want the editor width to match printer width */
+/* However, to fit UI, we can just let it fill and assume user handles wrapping visually */
+.ql-container.ql-snow {
+    border: none;
+    font-family: sans-serif;
+    font-size: 16px;
+}
+.ql-toolbar.ql-snow {
+    border: none;
+    border-bottom: 1px solid #eee;
 }
 
 /* File upload styling - updated for design consistency */
