@@ -126,9 +126,21 @@ main {
 
 /* Mobile responsive layout */
 @media (max-width: 768px) {
+  body {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+
+  main {
+    height: auto;
+    overflow: visible;
+  }
+
   .panels {
     flex-direction: column;
-    overflow-y: auto; /* Allow scrolling the entire page if needed */
+    height: auto;
+    overflow: visible;
   }
 
   .mode-content {
