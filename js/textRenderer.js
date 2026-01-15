@@ -21,6 +21,9 @@ export async function renderTextToCanvas(editorElement) {
     tempContainer.style.color = 'black';
     tempContainer.style.fontFamily = 'sans-serif'; // Or specific font if needed
 
+    // Add ql-editor class to ensure Quill styles (alignment, etc.) are applied
+    tempContainer.className = 'ql-editor';
+
     // Copy the inner HTML of the editor
     // Quill uses .ql-editor which has the content
     const qlEditor = editorElement.querySelector('.ql-editor') || editorElement;
@@ -40,7 +43,9 @@ export async function renderTextToCanvas(editorElement) {
             width: PRINTER_WIDTH,
             scale: 1, // 1:1 scale for pixel perfection
             backgroundColor: '#ffffff',
-            logging: false
+            logging: false,
+            // Ensure we capture styling correctly
+            windowWidth: PRINTER_WIDTH
         });
 
         return canvas;

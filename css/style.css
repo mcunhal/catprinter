@@ -293,7 +293,7 @@ h3 {
   gap: 0.5rem;
 }
 
-.receipt-wrapper {
+.preview-wrapper {
   background-color: #f0f0f0;
   padding: 0.5rem;
   flex: 1;
@@ -302,7 +302,7 @@ h3 {
   flex-direction: column;
 }
 
-.receipt-container {
+.preview-container {
   flex: 1;
   overflow-y: auto;
   overflow-x: auto;
