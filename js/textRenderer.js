@@ -3,9 +3,11 @@ import { PRINTER_WIDTH } from './printer.js';
 /**
  * Renders the content of the Quill editor to a canvas using html2canvas.
  * @param {HTMLElement} editorElement - The Quill editor's root element (the one containing the content).
+ * @param {Object} options - Rendering options.
+ * @param {number} options.padding - Vertical padding in pixels.
  * @returns {Promise<HTMLCanvasElement>} The generated canvas.
  */
-export async function renderTextToCanvas(editorElement) {
+export async function renderTextToCanvas(editorElement, options = {}) {
     if (!editorElement) {
         throw new Error("Editor element not found");
     }
@@ -20,6 +22,16 @@ export async function renderTextToCanvas(editorElement) {
     tempContainer.style.backgroundColor = 'white';
     tempContainer.style.color = 'black';
     tempContainer.style.fontFamily = 'sans-serif'; // Or specific font if needed
+
+    // Fix: Ensure height is auto to avoid full-screen height
+    tempContainer.style.height = 'auto';
+    tempContainer.style.overflow = 'visible';
+
+    // Apply vertical padding if provided
+    if (options.padding !== undefined) {
+        tempContainer.style.paddingTop = `${options.padding}px`;
+        tempContainer.style.paddingBottom = `${options.padding}px`;
+    }
 
     // Add ql-editor class to ensure Quill styles (alignment, etc.) are applied
     tempContainer.className = 'ql-editor';
