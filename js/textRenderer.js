@@ -108,32 +108,22 @@ export async function renderTextToCanvas(editorElement, options = {}) {
 
             ctx.save();
 
-            // Align to Right Side (Top of Banner Text is Right of Strip)
+            // Align to Left Side (Top of Banner Text is Left of Strip)
             // PRINTER_WIDTH is the width of the strip.
-            // We want text to start at (PRINTER_WIDTH - paddingHorizontal).
+            // We want text to start at paddingHorizontal.
             // This maps to the "Top" of the source text.
 
             // Transform:
             // Translate to Start Position:
-            // X: PRINTER_WIDTH - paddingHorizontal
-            // Y: paddingVertical
+            // X: paddingHorizontal
+            // Y: finalCanvas.height - paddingVertical
 
-            ctx.translate(PRINTER_WIDTH - paddingHorizontal, paddingVertical);
+            ctx.translate(paddingHorizontal, finalCanvas.height - paddingVertical);
 
-            // Rotate 90 deg CW
-            ctx.rotate(90 * Math.PI / 180);
+            // Rotate -90 deg (CCW)
+            ctx.rotate(-90 * Math.PI / 180);
 
             // Draw Image
-            // After rotation:
-            // X axis points Down.
-            // Y axis points Left.
-            // We want to draw source image such that:
-            // Source (0,0) is at origin.
-            // Source X (Reading direction) goes along New X (Down).
-            // Source Y (Line stack direction) goes along New Y (Left).
-
-            // Since drawImage draws at (x,y) in current coord system:
-            // We draw at (0,0).
             ctx.drawImage(sourceCanvas, 0, 0);
 
             ctx.restore();

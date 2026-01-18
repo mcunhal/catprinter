@@ -138,7 +138,9 @@ function initQuill() {
     // Import and register Size attributor
     const Size = Quill.import('attributors/style/size');
 
-    // We do NOT set Size.whitelist here, so that custom arbitrary values are allowed by the Size attributor.
+    // We explicitly clear the whitelist to allow arbitrary values
+    Size.whitelist = null;
+
     // However, we need a list for the toolbar dropdown.
     const fontSizes = [
         '10px', '12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px',
