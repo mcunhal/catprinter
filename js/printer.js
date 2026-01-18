@@ -78,6 +78,31 @@ function encode1bppRow(rowBool) {
   return rowBytes;
 }
 
+// Process canvas to 1bpp boolean array (Shared logic)
+function processImageTo1bpp(canvas) {
+  const { width, height } = canvas;
+
+  if (width !== PRINTER_WIDTH) {
+    throw new Error(`Canvas width ${width} != expected printer width ${PRINTER_WIDTH}`);
+  }
+
+  const ctx = canvas.getContext('2d');
+  const imgData = ctx.getImageData(0, 0, width, height).data;
+  const rowsBool = [];
+
+  for (let y = 0; y < height; y++) {
+    const row = new Array(width).fill(false);
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      // Luminance: 0.299*R + 0.587*G + 0.114*B
+      const lum = 0.299 * imgData[i] + 0.587 * imgData[i+1] + 0.114 * imgData[i+2];
+      row[x] = lum < 128; // Thresholding
+    }
+    rowsBool.push(row);
+  }
+  return rowsBool;
+}
+
 // Prepare full image data buffer, pad to MIN_DATA_BYTES
 function prepareImageDataBuffer(imageRowsBool) {
   const height = imageRowsBool.length;
@@ -147,8 +172,6 @@ class MXW01Driver {
 
     // Check for Magic Bytes: 0x22 0x21
     if (data[0] !== 0x22 || data[1] !== 0x21) {
-      // If we receive something else, it might be for a different protocol or interference.
-      // But since we are inside MXW01Driver, we expect this format.
       logger.debug(`[MXW01] Ignoring notification with unexpected header: ${data[0].toString(16)} ${data[1].toString(16)}`);
       return;
     }
@@ -160,7 +183,7 @@ class MXW01Driver {
     logger.debug(`[MXW01] Received notification for command 0x${cmdId.toString(16).toUpperCase()}`, {
       payloadLength: len
     });
-    
+
     const resolver = this.pendingResolvers.get(cmdId);
     if (resolver) {
       resolver(payload);
@@ -252,28 +275,11 @@ class MXW01Driver {
     const intensity = options.intensity !== undefined ? options.intensity : 0x5D;
     logger.info('Starting print job (MXW01)', { intensity });
     const startTime = Date.now();
-
-    const ctx = canvas.getContext('2d');
-    const { width, height } = canvas;
-
-    if (width !== PRINTER_WIDTH) {
-      throw new Error(`Canvas width ${width} != expected printer width ${PRINTER_WIDTH}`);
-    }
     
+    // Shared image processing
     logger.info('Converting image to 1-bit format');
-    const imgData = ctx.getImageData(0, 0, width, height).data;
-    const rowsBool = [];
-
-    for (let y = 0; y < height; y++) {
-      const row = new Array(width).fill(false);
-      for (let x = 0; x < width; x++) {
-        const i = (y * width + x) * 4;
-        const lum = 0.299 * imgData[i] + 0.587 * imgData[i+1] + 0.114 * imgData[i+2];
-        row[x] = lum < 128;
-      }
-      rowsBool.push(row);
-      if (y % Math.round(height/10) === 0) logger.setProgress(Math.round(y/height*20));
-    }
+    const rowsBool = processImageTo1bpp(canvas);
+    const height = rowsBool.length;
     
     logger.info('Rotating image 180° for printing');
     const rotatedRows = rowsBool.reverse().map(row => row.slice().reverse());
@@ -346,13 +352,7 @@ class StandardDriver {
   }
 
   createCommand(cmdId, payload) {
-    // Protocol: 0x51 0x78 <CmdID> 0x00 <Len> 0x00 <Payload> <CRC8> 0xFF
     const len = payload.length;
-    // Header format: 0x51 0x78 <CmdID> 0x00 <LenLow> <LenHigh>
-    // Wait, NaitLee's python:
-    // header = [0x51, 0x78, command_bit, 0x00, payload_size, 0x00]
-    // Note: payload_size is one byte? "if payload_size > 0xff: raise..."
-    // So: 51 78 Cmd 00 Len 00
     const header = [0x51, 0x78, cmdId & 0xFF, 0x00, len & 0xFF, 0x00];
     const cmd = new Uint8Array(header.concat(Array.from(payload)));
     const crc = calculateCRC8(payload);
@@ -366,65 +366,54 @@ class StandardDriver {
   }
 
   async getBatteryLevel() {
-    // No explicit battery command reverse engineered yet.
-    // Returning dummy value to prevent errors.
     return 100;
   }
 
   async getPrinterStatus() {
-    // Returning dummy status to prevent errors.
     return { isError: false };
   }
 
   async printImage(canvas, options = {}) {
     logger.info('Starting print job (Standard)', options);
     const startTime = Date.now();
-    const ctx = canvas.getContext('2d');
-    const { width, height } = canvas;
-    
-    if (width !== PRINTER_WIDTH) {
-      throw new Error(`Canvas width ${width} != expected printer width ${PRINTER_WIDTH}`);
-    }
 
+    // Shared image processing
     logger.info('Converting image to 1-bit format');
-    const imgData = ctx.getImageData(0, 0, width, height).data;
-    const rowsBool = [];
-    
-    for (let y = 0; y < height; y++) {
-      const row = new Array(width).fill(false);
-      for (let x = 0; x < width; x++) {
-        const i = (y * width + x) * 4;
-        const lum = 0.299 * imgData[i] + 0.587 * imgData[i+1] + 0.114 * imgData[i+2];
-        row[x] = lum < 128;
-      }
-      rowsBool.push(row);
-    }
+    const rowsBool = processImageTo1bpp(canvas);
+    const height = rowsBool.length;
 
     // Geometric Rotation: For Standard, we simply reverse the array of rows (Bottom-up?)
-    // NaitLee uses: buffer.seek(0) ... read data ... reverse bits ... write.
-    // And "flip(..., vertically=True)".
-    // Vertically flip means Row N becomes Row 0.
-    // The user reports the print is Mirrored. This suggests we need a horizontal flip too.
-    // MXW01 does `row.slice().reverse()` for horizontal flip. We'll add that.
+    // AND Horizontal Flip (reverse row content) because the user reported mirroring.
     const rotatedRows = rowsBool.reverse().map(row => row.slice().reverse());
-    
-    // Note on Bit Reversal: NaitLee reverses bits in every byte.
-    // We also need to ensure row endianness. `encode1bppRow` packs MSB first (0x80).
-    // NaitLee's `reverse_bits` turns 0b10000000 (0x80) into 0b00000001 (0x01).
-    // So effectively sending LSB first?
     
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     try {
-      // 1. Start Printing (0xA3) - using Payload 0x00
+      // 1. Start Printing (0xA3)
       logger.debug('[Standard] Sending Start Printing');
       await this.sendCommand(0xA3, Uint8Array.of(0x00));
       await sleep(50);
 
-      // 2. Set Energy (0xAF) & Apply (0xBE)
+      // 2. Configure Print Density/Speed
+
+      // 2a. Set DPI (0xA4) -> 200dpi (Payload 50 / 0x32) based on NaitLee protocol
+      await this.sendCommand(0xA4, Uint8Array.of(0x32));
+      await sleep(50);
+
+      // 2b. Set Speed (0xBD)
+      // NaitLee formula: speed = 4 * (Quality + 5). Default Quality 3 -> Speed 32.
+      // Higher value = Slower speed = Darker print.
+      // We'll set a default of 33 (slightly slower/darker than default).
+      // We could optionally map options.intensity to speed too, but let's stick to Energy first.
+      const speedVal = 33;
+      logger.debug(`[Standard] Setting Speed to ${speedVal} (0x${speedVal.toString(16)})`);
+      await this.sendCommand(0xBD, Uint8Array.of(speedVal));
+      await sleep(50);
+
+      // 2c. Set Energy (0xAF) & Apply (0xBE)
       // Map 0-255 intensity to 0-65535 energy.
-      // Default NaitLee medium is 0x4000 (16384). Max 0xFFFF.
-      // Let's map linearly: intensity * 256.
+      // Default NaitLee medium is 0x4000 (16384).
+      // Intensity 100 -> 25600. Intensity 200 -> 51200.
       const energyVal = (options.intensity || 200) * 256;
       const energyBytes = new Uint8Array([energyVal & 0xFF, (energyVal >> 8) & 0xFF]); // Little Endian
 
@@ -439,14 +428,12 @@ class StandardDriver {
       await this.sendCommand(0xA6, latticeStart);
       await sleep(50);
 
-      // 3. Send Image Data (0xA2)
+      // 4. Send Image Data (0xA2)
       logger.info(`Printing ${height} rows...`);
       for (let y = 0; y < height; y++) {
         let rowBytes = encode1bppRow(rotatedRows[y]);
 
-        // Note: NaitLee's python code reverses bits because it reads MSB-packed PBM files.
-        // Our encode1bppRow helper produces LSB-packed bytes (bit 0 is pixel 0), which matches
-        // what the printer expects. Therefore, we do NOT reverse bits here.
+        // No bit reversal needed (LSB source -> LSB printer)
 
         await this.sendCommand(0xA2, rowBytes);
 
@@ -454,12 +441,12 @@ class StandardDriver {
         if (y % 20 === 0) logger.setProgress(Math.round((y / height) * 100));
       }
 
-      // 4. End Lattice (0xA6)
+      // 5. End Lattice (0xA6)
       logger.debug('[Standard] Sending End Lattice');
       const latticeEnd = new Uint8Array([0xaa, 0x55, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17]);
       await this.sendCommand(0xA6, latticeEnd);
 
-      // 5. Feed Paper (0xA1) -> Payload: 0x80 0x00 (128 pixels)
+      // 6. Feed Paper (0xA1) -> Payload: 0x80 0x00 (128 pixels)
       logger.debug('[Standard] Feeding Paper');
       await this.sendCommand(0xA1, new Uint8Array([0x80, 0x00]));
 
@@ -492,9 +479,6 @@ async function detectDriver(device, server, controlChar, notifyChar) {
   }
 
   // 2. Fallback: Active Probe
-  // We send a status query in both formats and see which one replies.
-  // We use a shorter timeout for this probe.
-
   logger.info('Device name unknown or ambiguous. Starting active protocol probe...');
 
   return new Promise(async (resolve, reject) => {
@@ -509,7 +493,6 @@ async function detectDriver(device, server, controlChar, notifyChar) {
             logger.success('Received MXW01 response. Using MXW01 Driver.');
             settled = true;
             notifyChar.removeEventListener('characteristicvaluechanged', handler);
-            // We need to fetch Data Char for MXW01
             server.getPrimaryService(MAIN_SERVICE_UUID)
                 .catch(() => server.getPrimaryService(MAIN_SERVICE_UUID_ALT))
                 .then(svc => svc.getCharacteristic(DATA_WRITE_UUID))
@@ -531,22 +514,10 @@ async function detectDriver(device, server, controlChar, notifyChar) {
 
     notifyChar.addEventListener('characteristicvaluechanged', handler);
 
-    // Send Pings
     try {
         // MXW01 Ping (Get Status)
-        const mxw01Cmd = new Uint8Array([0x22, 0x21, 0xA1, 0x00, 0x01, 0x00, 0x00, 0x56, 0xFF]); // Hardcoded valid packet for speed?
-        // Or reuse logic:
-        // const cmd = new Uint8Array(header.concat(Array.from(payload)));
-        // MXW01 Header: 22 21 A1 00 00 00 -> CRC -> FF.
-        // Payload empty.
-        const mxw01Ping = new Uint8Array([0x22, 0x21, 0xA1, 0x00, 0x00, 0x00, 0x56, 0xFF]); // CRC for empty is 0? Wait.
-        // calculated CRC8([]) is 0.
-        // CRC8_TABLE[0] = 0.
-        // So 0x00 is correct.
         const mxw01PingReal = new Uint8Array([0x22, 0x21, 0xA1, 0x00, 0x00, 0x00, 0x00, 0xFF]);
-
         // Standard Ping (Get Status/State)
-        // 51 78 A1 00 00 00 00 FF
         const stdPing = new Uint8Array([0x51, 0x78, 0xA1, 0x00, 0x00, 0x00, 0x00, 0xFF]);
 
         logger.debug('Sending MXW01 Ping...');
@@ -555,14 +526,12 @@ async function detectDriver(device, server, controlChar, notifyChar) {
         logger.debug('Sending Standard Ping...');
         await controlChar.writeValue(stdPing);
 
-        // Wait 2 seconds for response
         setTimeout(() => {
             if (!settled) {
                 logger.warn('Probe timed out. Defaulting to MXW01 Driver (Legacy behavior).');
                 settled = true;
                 notifyChar.removeEventListener('characteristicvaluechanged', handler);
 
-                // Fallback requires Data Char
                 server.getPrimaryService(MAIN_SERVICE_UUID)
                     .catch(() => server.getPrimaryService(MAIN_SERVICE_UUID_ALT))
                     .then(svc => svc.getCharacteristic(DATA_WRITE_UUID))
@@ -570,7 +539,6 @@ async function detectDriver(device, server, controlChar, notifyChar) {
                         resolve(new MXW01Driver(device, server, controlChar, dataChar, notifyChar));
                     })
                     .catch(err => {
-                         // If no Data char, must be Standard (as MXW01 requires it)
                          logger.warn('Fallback: Data Char missing, using Standard Driver.');
                          resolve(new StandardDriver(device, server, controlChar, notifyChar));
                     });
@@ -622,12 +590,6 @@ export async function connectPrinter() {
     try {
         const services = await server.getPrimaryServices();
         logger.info('Discovered Services:', services.map(s => s.uuid));
-        for (const s of services) {
-            try {
-                const chars = await s.getCharacteristics();
-                logger.debug(`Service ${s.uuid} Characteristics:`, chars.map(c => c.uuid));
-            } catch(e) {}
-        }
     } catch (e) { logger.warn('Service discovery debug dump failed', e); }
 
     let svc;
