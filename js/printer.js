@@ -404,8 +404,9 @@ class StandardDriver {
     // NaitLee uses: buffer.seek(0) ... read data ... reverse bits ... write.
     // And "flip(..., vertically=True)".
     // Vertically flip means Row N becomes Row 0.
-    // So yes, we reverse the rows array.
-    const rotatedRows = rowsBool.reverse();
+    // The user reports the print is Mirrored. This suggests we need a horizontal flip too.
+    // MXW01 does `row.slice().reverse()` for horizontal flip. We'll add that.
+    const rotatedRows = rowsBool.reverse().map(row => row.slice().reverse());
     
     // Note on Bit Reversal: NaitLee reverses bits in every byte.
     // We also need to ensure row endianness. `encode1bppRow` packs MSB first (0x80).
@@ -420,7 +421,19 @@ class StandardDriver {
       await this.sendCommand(0xA3, Uint8Array.of(0x00));
       await sleep(50);
 
-      // 2. Start Lattice (0xA6)
+      // 2. Set Energy (0xAF) & Apply (0xBE)
+      // Map 0-255 intensity to 0-65535 energy.
+      // Default NaitLee medium is 0x4000 (16384). Max 0xFFFF.
+      // Let's map linearly: intensity * 256.
+      const energyVal = (options.intensity || 200) * 256;
+      const energyBytes = new Uint8Array([energyVal & 0xFF, (energyVal >> 8) & 0xFF]); // Little Endian
+
+      logger.debug(`[Standard] Setting Energy to 0x${energyVal.toString(16)}`);
+      await this.sendCommand(0xAF, energyBytes);
+      await this.sendCommand(0xBE, Uint8Array.of(0x01)); // Apply
+      await sleep(50);
+
+      // 3. Start Lattice (0xA6)
       logger.debug('[Standard] Sending Start Lattice');
       const latticeStart = new Uint8Array([0xaa, 0x55, 0x17, 0x38, 0x44, 0x5f, 0x5f, 0x5f, 0x44, 0x38, 0x2c]);
       await this.sendCommand(0xA6, latticeStart);
