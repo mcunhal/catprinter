@@ -22,7 +22,11 @@ const resetBtn = document.getElementById('resetBtn');
 // Settings
 const printDensityInput = document.getElementById('printDensity');
 const printDensityDisplay = document.getElementById('printDensityDisplay');
-const textPaddingInput = document.getElementById('textPadding');
+const paddingVerticalInput = document.getElementById('paddingVertical');
+const paddingHorizontalInput = document.getElementById('paddingHorizontal');
+const textOrientationSelect = document.getElementById('textOrientation');
+const customFontSizeInput = document.getElementById('customFontSize');
+const applyFontSizeBtn = document.getElementById('applyFontSizeBtn');
 // Preview
 const textPreview = document.getElementById('textPreview');
 const textPreviewContainer = document.getElementById('textPreviewContainer');
@@ -88,10 +92,35 @@ function init() {
         });
     }
 
-    if (textPaddingInput) {
-        textPaddingInput.addEventListener('input', () => {
-            if (window.previewTimeout) clearTimeout(window.previewTimeout);
-            window.previewTimeout = setTimeout(updateTextPreview, 500);
+    if (paddingVerticalInput) {
+        paddingVerticalInput.addEventListener('input', schedulePreviewUpdate);
+    }
+
+    if (paddingHorizontalInput) {
+        paddingHorizontalInput.addEventListener('input', schedulePreviewUpdate);
+    }
+
+    if (textOrientationSelect) {
+        textOrientationSelect.addEventListener('change', schedulePreviewUpdate);
+    }
+
+    if (applyFontSizeBtn && customFontSizeInput) {
+        applyFontSizeBtn.addEventListener('click', () => {
+            if (!quill) return;
+            const size = parseInt(customFontSizeInput.value);
+            if (size > 0) {
+                // Ensure editor has focus to get selection
+                quill.focus();
+                const range = quill.getSelection();
+                if (range) {
+                    if (range.length > 0) {
+                        quill.format('size', `${size}px`);
+                    } else {
+                        // Insert text with this size or set format for next typing
+                        quill.format('size', `${size}px`);
+                    }
+                }
+            }
         });
     }
 
@@ -99,14 +128,32 @@ function init() {
     setTimeout(updateTextPreview, 500);
 }
 
+function schedulePreviewUpdate() {
+    if (window.previewTimeout) clearTimeout(window.previewTimeout);
+    window.previewTimeout = setTimeout(updateTextPreview, 500);
+}
+
 // Initialize Quill Editor
 function initQuill() {
+    // Import and register Size attributor
+    const Size = Quill.import('attributors/style/size');
+
+    // We do NOT set Size.whitelist here, so that custom arbitrary values are allowed by the Size attributor.
+    // However, we need a list for the toolbar dropdown.
+    const fontSizes = [
+        '10px', '12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px',
+        '36px', '48px', '64px', '72px', '96px', '128px', '160px'
+    ];
+
+    Quill.register(Size, true);
+
     quill = new Quill('#editor', {
         theme: 'snow',
         modules: {
             toolbar: [
                 ['bold', 'italic', 'underline', 'strike'],
                 [{ 'header': [1, 2, 3, false] }],
+                [{ 'size': fontSizes }],
                 [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                 [{ 'align': [] }],
                 ['clean']
@@ -631,23 +678,51 @@ async function updateTextPreview() {
         const editorElement = document.getElementById('editor');
         if (!editorElement) return;
         
-        const paddingMm = parseInt(textPaddingInput.value) || 3;
-        const paddingPx = Math.round(paddingMm * 8);
+        const paddingVerticalMm = parseInt(paddingVerticalInput.value) || 0;
+        const paddingHorizontalMm = parseInt(paddingHorizontalInput.value) || 0;
+        const orientation = textOrientationSelect.value;
 
-        const canvas = await renderTextToCanvas(editorElement, { padding: paddingPx });
+        const paddingVerticalPx = Math.round(paddingVerticalMm * 8);
+        const paddingHorizontalPx = Math.round(paddingHorizontalMm * 8);
+
+        const result = await renderTextToCanvas(editorElement, {
+            paddingVertical: paddingVerticalPx,
+            paddingHorizontal: paddingHorizontalPx,
+            orientation: orientation
+        });
+
+        const canvas = result.canvas || result; // Handle both old and new return signature temporarily
+        const warnings = result.warnings || [];
         
         // Clear current preview
         textPreview.innerHTML = '';
         
+        // Handle warnings
+        if (warnings.length > 0) {
+            const warningEl = document.createElement('div');
+            warningEl.style.backgroundColor = '#fed7d7';
+            warningEl.style.color = '#c53030';
+            warningEl.style.padding = '5px';
+            warningEl.style.marginBottom = '5px';
+            warningEl.style.fontSize = '0.8rem';
+            warningEl.style.borderRadius = '3px';
+            warningEl.innerHTML = warnings.join('<br>');
+            textPreview.appendChild(warningEl);
+        }
+
         // Set up canvas for display
         canvas.style.width = '100%';
         canvas.style.height = 'auto';
         canvas.style.imageRendering = 'pixelated';
         canvas.style.display = 'block';
         
+        // Border for the preview to see boundaries
+        canvas.style.border = '1px dashed #ccc';
+
         textPreview.appendChild(canvas);
     } catch (err) {
         logger.warn("Failed to update text preview", {error: err.message});
+        console.error(err);
     }
 }
 
@@ -680,15 +755,27 @@ async function printText() {
         
         // Get editor content and render to canvas
         const editorElement = document.getElementById('editor');
-        const paddingMm = parseInt(textPaddingInput.value) || 3;
-        const paddingPx = Math.round(paddingMm * 8);
-        const canvas = await renderTextToCanvas(editorElement, { padding: paddingPx });
+        const paddingVerticalMm = parseInt(paddingVerticalInput.value) || 0;
+        const paddingHorizontalMm = parseInt(paddingHorizontalInput.value) || 0;
+        const orientation = textOrientationSelect.value;
+
+        const paddingVerticalPx = Math.round(paddingVerticalMm * 8);
+        const paddingHorizontalPx = Math.round(paddingHorizontalMm * 8);
+
+        const result = await renderTextToCanvas(editorElement, {
+            paddingVertical: paddingVerticalPx,
+            paddingHorizontal: paddingHorizontalPx,
+            orientation: orientation
+        });
+
+        const canvas = result.canvas || result;
         
         logger.info('Text rendered', {
             width: canvas.width,
             height: canvas.height,
-            paddingMm,
-            paddingPx
+            paddingVerticalMm,
+            paddingHorizontalMm,
+            orientation
         });
         
         // Get intensity from slider
