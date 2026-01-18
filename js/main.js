@@ -713,7 +713,12 @@ async function updateTextPreview() {
         }
 
         // Set up canvas for display
-        canvas.style.width = '100%';
+        if (orientation === 'landscape') {
+            canvas.style.width = 'auto';
+            canvas.style.maxWidth = '100%';
+        } else {
+            canvas.style.width = '100%';
+        }
         canvas.style.height = 'auto';
         canvas.style.imageRendering = 'pixelated';
         canvas.style.display = 'block';
