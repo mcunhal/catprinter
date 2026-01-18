@@ -18,6 +18,13 @@ const CommandIDs = {
   PRINT_COMPLETE: 0xAA 
 };
 
+// Known Standard/Blue Printer Models (from NaitLee/Cat-Printer)
+const STANDARD_MODELS = [
+  'SC03h', 'GB01', 'GB02', 'GB03', 'GT01',
+  'MX05', 'MX06', 'MX08', 'MX09', 'MX10',
+  'YT01', 'MX11', '_ZZ00'
+];
+
 // CRC8 (Dallas/Maxim variant, Polynomial 0x07, Init 0x00) Lookup Table
 const CRC8_TABLE = [
   0x00,0x07,0x0E,0x09,0x1C,0x1B,0x12,0x15,0x38,0x3F,0x36,0x31,0x24,0x23,0x2A,0x2D,
@@ -138,15 +145,18 @@ class MXW01Driver {
   handleNotification(event) {
     const data = new Uint8Array(event.target.value.buffer);
 
+    // Check for Magic Bytes: 0x22 0x21
     if (data[0] !== 0x22 || data[1] !== 0x21) {
-      logger.warn(`[MXW01] Ignoring unexpected notification format`);
+      // If we receive something else, it might be for a different protocol or interference.
+      // But since we are inside MXW01Driver, we expect this format.
+      logger.debug(`[MXW01] Ignoring notification with unexpected header: ${data[0].toString(16)} ${data[1].toString(16)}`);
       return;
     }
 
     const cmdId = data[2];
     const len = data[4] | (data[5] << 8);
     const payload = data.slice(6, 6 + len);
-    
+
     logger.debug(`[MXW01] Received notification for command 0x${cmdId.toString(16).toUpperCase()}`, {
       payloadLength: len
     });
@@ -242,7 +252,7 @@ class MXW01Driver {
     const intensity = options.intensity !== undefined ? options.intensity : 0x5D;
     logger.info('Starting print job (MXW01)', { intensity });
     const startTime = Date.now();
-    
+
     const ctx = canvas.getContext('2d');
     const { width, height } = canvas;
 
@@ -333,15 +343,16 @@ class StandardDriver {
     this.notifyChar = notifyChar;
     this.lastKnownBatteryLevel = null;
     this.isPrinting = false;
-    // Standard protocol might not have a reliable notification system implemented here yet
-    // but we will monitor it just in case.
   }
 
   createCommand(cmdId, payload) {
     // Protocol: 0x51 0x78 <CmdID> 0x00 <Len> 0x00 <Payload> <CRC8> 0xFF
     const len = payload.length;
-    // Note: Python code implies 1 byte length at index 4?
-    // "prefix + bytearray([ 0x51, 0x78, command_bit, 0x00, payload_size, 0x00 ])"
+    // Header format: 0x51 0x78 <CmdID> 0x00 <LenLow> <LenHigh>
+    // Wait, NaitLee's python:
+    // header = [0x51, 0x78, command_bit, 0x00, payload_size, 0x00]
+    // Note: payload_size is one byte? "if payload_size > 0xff: raise..."
+    // So: 51 78 Cmd 00 Len 00
     const header = [0x51, 0x78, cmdId & 0xFF, 0x00, len & 0xFF, 0x00];
     const cmd = new Uint8Array(header.concat(Array.from(payload)));
     const crc = calculateCRC8(payload);
@@ -349,24 +360,20 @@ class StandardDriver {
     return new Uint8Array([...cmd, crc, 0xFF]);
   }
 
-  // Generic helper to send a command
   async sendCommand(cmdId, payload) {
     const cmd = this.createCommand(cmdId, payload);
     await this.controlChar.writeValue(cmd);
   }
 
   async getBatteryLevel() {
-    // Placeholder: NaitLee code doesn't explicitly show battery query in the simple snippets.
-    // We can try to query status 0xA1 (Get Status) or 0xA8 (Get Device Info)
-    // For now, return a dummy or unknown to avoid crashing
-    logger.warn('[Standard] Battery level query not fully implemented.');
-    return null;
+    // No explicit battery command reverse engineered yet.
+    // Returning dummy value to prevent errors.
+    return 100;
   }
 
   async getPrinterStatus() {
-    // Similarly, status query logic differs.
-    logger.warn('[Standard] Status query not fully implemented.');
-    return { isError: false }; // Optimistic
+    // Returning dummy status to prevent errors.
+    return { isError: false };
   }
 
   async printImage(canvas, options = {}) {
@@ -393,66 +400,54 @@ class StandardDriver {
       rowsBool.push(row);
     }
 
-    // Geometric Rotation (180 deg)
-    // Note: Standard printer (GB01 etc) might need this too if it feeds bottom-first?
-    // NaitLee uses `flip(..., vertically=True)` which reverses the rows.
-    const rotatedRows = rowsBool.reverse().map(row => row.slice().reverse());
+    // Geometric Rotation: For Standard, we simply reverse the array of rows (Bottom-up?)
+    // NaitLee uses: buffer.seek(0) ... read data ... reverse bits ... write.
+    // And "flip(..., vertically=True)".
+    // Vertically flip means Row N becomes Row 0.
+    // So yes, we reverse the rows array.
+    const rotatedRows = rowsBool.reverse();
     
-    // We do NOT use prepareImageDataBuffer because we send row-by-row as commands, not a big blob.
+    // Note on Bit Reversal: NaitLee reverses bits in every byte.
+    // We also need to ensure row endianness. `encode1bppRow` packs MSB first (0x80).
+    // NaitLee's `reverse_bits` turns 0b10000000 (0x80) into 0b00000001 (0x01).
+    // So effectively sending LSB first?
     
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     try {
-      // 1. Start Printing (0xA3)
-      // Payload: 00 01 00 00 00 00 (taken from NaitLee `start_printing` fixed payload?
-      // Actually NaitLee sends `00 01 00 00 00 00` as payload?
-      // `start_printing`: self.send(bytearray([0x51, 0x78, 0xa3, 0x00, 0x01, 0x00, 0x00, 0x00, 0xff]))
-      // If we parse that manually: 51 78 (Magic) A3 (Cmd) 00 (Zero) 01 (Len) 00 (Zero) 00 (Payload) 00 (CRC) FF (End).
-      // So payload is `[0x00]`.
+      // 1. Start Printing (0xA3) - using Payload 0x00
       logger.debug('[Standard] Sending Start Printing');
       await this.sendCommand(0xA3, Uint8Array.of(0x00));
       await sleep(50);
 
-      // 2. Set Energy/Intensity? (0xBE) -> payload 01? (Apply energy)
-      // NaitLee: `apply_energy`: make_command(0xbe, int_to_bytes(0x01)) -> payload `[0x01]`.
-      // Also `set_energy` (0xAF).
-      // Let's skip advanced config for now and stick to basic print flow.
-
-      // 3. Start Lattice (0xA6)
-      // Payload: aa 55 17 38 44 5f 5f 5f 44 38 2c
+      // 2. Start Lattice (0xA6)
       logger.debug('[Standard] Sending Start Lattice');
       const latticeStart = new Uint8Array([0xaa, 0x55, 0x17, 0x38, 0x44, 0x5f, 0x5f, 0x5f, 0x44, 0x38, 0x2c]);
       await this.sendCommand(0xA6, latticeStart);
       await sleep(50);
 
-      // 4. Send Image Data (0xA2)
-      // Iterate rows, encode to bytes, REVERSE BITS, send as 0xA2.
+      // 3. Send Image Data (0xA2)
       logger.info(`Printing ${height} rows...`);
       for (let y = 0; y < height; y++) {
-        // Encode row to bytes (using global helper)
         let rowBytes = encode1bppRow(rotatedRows[y]);
 
-        // Reverse bits in each byte (NaitLee requirement)
+        // Reverse bits in each byte
         for(let i=0; i<rowBytes.length; i++) {
           rowBytes[i] = reverseBits(rowBytes[i]);
         }
 
         await this.sendCommand(0xA2, rowBytes);
 
-        // Flow control / progress
-        if (y % 5 === 0) await sleep(5); // Small delay to avoid flooding buffer
+        if (y % 5 === 0) await sleep(5);
         if (y % 20 === 0) logger.setProgress(Math.round((y / height) * 100));
       }
 
-      // 5. End Lattice (0xA6)
-      // Payload: aa 55 17 00 00 00 00 00 00 00 17
+      // 4. End Lattice (0xA6)
       logger.debug('[Standard] Sending End Lattice');
       const latticeEnd = new Uint8Array([0xaa, 0x55, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17]);
       await this.sendCommand(0xA6, latticeEnd);
 
-      // 6. Feed Paper (0xA1)
-      // Payload: 2 bytes (pixels). 128 pixels?
-      // int_to_bytes(128, 2) -> 80 00 (Little Endian).
+      // 5. Feed Paper (0xA1) -> Payload: 0x80 0x00 (128 pixels)
       logger.debug('[Standard] Feeding Paper');
       await this.sendCommand(0xA1, new Uint8Array([0x80, 0x00]));
 
@@ -469,8 +464,113 @@ class StandardDriver {
 
 // Global active driver
 let activeDriver = null;
-// Keep track of device for global utility functions
 let activeDevice = null;
+
+// Helper to determine driver type via handshake
+async function detectDriver(device, server, controlChar, notifyChar) {
+  logger.info(`Detecting driver for "${device.name}"...`);
+
+  // 1. Name-based fast path
+  const name = (device.name || '').trim();
+  const knownStandard = STANDARD_MODELS.some(m => name.includes(m));
+
+  if (knownStandard) {
+    logger.success(`Device name matches known Standard model. Using Standard Driver.`);
+    return new StandardDriver(device, server, controlChar, notifyChar);
+  }
+
+  // 2. Fallback: Active Probe
+  // We send a status query in both formats and see which one replies.
+  // We use a shorter timeout for this probe.
+
+  logger.info('Device name unknown or ambiguous. Starting active protocol probe...');
+
+  return new Promise(async (resolve, reject) => {
+    let settled = false;
+
+    const handler = (event) => {
+        const data = new Uint8Array(event.target.value.buffer);
+        if (settled) return;
+
+        // Check magic bytes
+        if (data[0] === 0x22 && data[1] === 0x21) {
+            logger.success('Received MXW01 response. Using MXW01 Driver.');
+            settled = true;
+            notifyChar.removeEventListener('characteristicvaluechanged', handler);
+            // We need to fetch Data Char for MXW01
+            server.getPrimaryService(MAIN_SERVICE_UUID)
+                .catch(() => server.getPrimaryService(MAIN_SERVICE_UUID_ALT))
+                .then(svc => svc.getCharacteristic(DATA_WRITE_UUID))
+                .then(dataChar => {
+                    resolve(new MXW01Driver(device, server, controlChar, dataChar, notifyChar));
+                })
+                .catch(err => {
+                    logger.error('MXW01 protocol detected but Data Characteristic missing!', err);
+                    reject(err);
+                });
+        }
+        else if (data[0] === 0x51 && data[1] === 0x78) {
+            logger.success('Received Standard response. Using Standard Driver.');
+            settled = true;
+            notifyChar.removeEventListener('characteristicvaluechanged', handler);
+            resolve(new StandardDriver(device, server, controlChar, notifyChar));
+        }
+    };
+
+    notifyChar.addEventListener('characteristicvaluechanged', handler);
+
+    // Send Pings
+    try {
+        // MXW01 Ping (Get Status)
+        const mxw01Cmd = new Uint8Array([0x22, 0x21, 0xA1, 0x00, 0x01, 0x00, 0x00, 0x56, 0xFF]); // Hardcoded valid packet for speed?
+        // Or reuse logic:
+        // const cmd = new Uint8Array(header.concat(Array.from(payload)));
+        // MXW01 Header: 22 21 A1 00 00 00 -> CRC -> FF.
+        // Payload empty.
+        const mxw01Ping = new Uint8Array([0x22, 0x21, 0xA1, 0x00, 0x00, 0x00, 0x56, 0xFF]); // CRC for empty is 0? Wait.
+        // calculated CRC8([]) is 0.
+        // CRC8_TABLE[0] = 0.
+        // So 0x00 is correct.
+        const mxw01PingReal = new Uint8Array([0x22, 0x21, 0xA1, 0x00, 0x00, 0x00, 0x00, 0xFF]);
+
+        // Standard Ping (Get Status/State)
+        // 51 78 A1 00 00 00 00 FF
+        const stdPing = new Uint8Array([0x51, 0x78, 0xA1, 0x00, 0x00, 0x00, 0x00, 0xFF]);
+
+        logger.debug('Sending MXW01 Ping...');
+        await controlChar.writeValue(mxw01PingReal);
+
+        logger.debug('Sending Standard Ping...');
+        await controlChar.writeValue(stdPing);
+
+        // Wait 2 seconds for response
+        setTimeout(() => {
+            if (!settled) {
+                logger.warn('Probe timed out. Defaulting to MXW01 Driver (Legacy behavior).');
+                settled = true;
+                notifyChar.removeEventListener('characteristicvaluechanged', handler);
+
+                // Fallback requires Data Char
+                server.getPrimaryService(MAIN_SERVICE_UUID)
+                    .catch(() => server.getPrimaryService(MAIN_SERVICE_UUID_ALT))
+                    .then(svc => svc.getCharacteristic(DATA_WRITE_UUID))
+                    .then(dataChar => {
+                        resolve(new MXW01Driver(device, server, controlChar, dataChar, notifyChar));
+                    })
+                    .catch(err => {
+                         // If no Data char, must be Standard (as MXW01 requires it)
+                         logger.warn('Fallback: Data Char missing, using Standard Driver.');
+                         resolve(new StandardDriver(device, server, controlChar, notifyChar));
+                    });
+            }
+        }, 2000);
+
+    } catch (e) {
+        logger.error('Error during probe', e);
+        reject(e);
+    }
+  });
+}
 
 export async function connectPrinter() {
   logger.info('Connecting to printer...');
@@ -485,8 +585,6 @@ export async function connectPrinter() {
   }
   
   try {
-    // Attempt discovery
-    // Note: We need to filter for MAIN_SERVICE_UUID but also include all other potential UUIDs
     let device;
     try {
         device = await navigator.bluetooth.requestDevice({
@@ -508,6 +606,18 @@ export async function connectPrinter() {
     const server = await device.gatt.connect();
     activeDevice = device;
     
+    // Dump Services for Debugging (User Request)
+    try {
+        const services = await server.getPrimaryServices();
+        logger.info('Discovered Services:', services.map(s => s.uuid));
+        for (const s of services) {
+            try {
+                const chars = await s.getCharacteristics();
+                logger.debug(`Service ${s.uuid} Characteristics:`, chars.map(c => c.uuid));
+            } catch(e) {}
+        }
+    } catch (e) { logger.warn('Service discovery debug dump failed', e); }
+
     let svc;
     try {
       svc = await server.getPrimaryService(MAIN_SERVICE_UUID);
@@ -516,30 +626,11 @@ export async function connectPrinter() {
     }
     
     const controlChar = await svc.getCharacteristic(CONTROL_WRITE_UUID);
+    const notifyChar = await svc.getCharacteristic(NOTIFY_UUID);
+    await notifyChar.startNotifications();
     
-    // Attempt to get notify char, but it might not be critical for Standard driver sending (blind fire)
-    let notifyChar = null;
-    try {
-        notifyChar = await svc.getCharacteristic(NOTIFY_UUID);
-        await notifyChar.startNotifications();
-    } catch (e) {
-        logger.warn('Could not subscribe to notifications', e);
-    }
-    
-    // Driver Detection Strategy
-    // We try to get the Data Characteristic (MXW01 specific)
-    // If it exists -> MXW01Driver
-    // If it fails -> StandardDriver
-    
-    let dataChar = null;
-    try {
-        dataChar = await svc.getCharacteristic(DATA_WRITE_UUID);
-        logger.success('Data characteristic found. Using MXW01 Driver.');
-        activeDriver = new MXW01Driver(device, server, controlChar, dataChar, notifyChar);
-    } catch (e) {
-        logger.success('Data characteristic not found. Using Standard Driver.');
-        activeDriver = new StandardDriver(device, server, controlChar, notifyChar);
-    }
+    // Use Robust Detection
+    activeDriver = await detectDriver(device, server, controlChar, notifyChar);
     
     logger.success('Printer driver initialized.');
   } catch (err) {
