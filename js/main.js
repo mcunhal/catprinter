@@ -22,6 +22,7 @@ const resetBtn = document.getElementById('resetBtn');
 // Settings
 const printDensityInput = document.getElementById('printDensity');
 const printDensityDisplay = document.getElementById('printDensityDisplay');
+const textPaddingInput = document.getElementById('textPadding');
 // Preview
 const textPreview = document.getElementById('textPreview');
 const textPreviewContainer = document.getElementById('textPreviewContainer');
@@ -84,6 +85,13 @@ function init() {
         printDensityInput.addEventListener('input', () => {
             const val = parseInt(printDensityInput.value);
             printDensityDisplay.textContent = `${val} (0x${val.toString(16).toUpperCase().padStart(2, '0')})`;
+        });
+    }
+
+    if (textPaddingInput) {
+        textPaddingInput.addEventListener('input', () => {
+            if (window.previewTimeout) clearTimeout(window.previewTimeout);
+            window.previewTimeout = setTimeout(updateTextPreview, 500);
         });
     }
 
@@ -623,7 +631,10 @@ async function updateTextPreview() {
         const editorElement = document.getElementById('editor');
         if (!editorElement) return;
         
-        const canvas = await renderTextToCanvas(editorElement);
+        const paddingMm = parseInt(textPaddingInput.value) || 3;
+        const paddingPx = Math.round(paddingMm * 8);
+
+        const canvas = await renderTextToCanvas(editorElement, { padding: paddingPx });
         
         // Clear current preview
         textPreview.innerHTML = '';
@@ -669,11 +680,15 @@ async function printText() {
         
         // Get editor content and render to canvas
         const editorElement = document.getElementById('editor');
-        const canvas = await renderTextToCanvas(editorElement);
+        const paddingMm = parseInt(textPaddingInput.value) || 3;
+        const paddingPx = Math.round(paddingMm * 8);
+        const canvas = await renderTextToCanvas(editorElement, { padding: paddingPx });
         
         logger.info('Text rendered', {
             width: canvas.width,
-            height: canvas.height
+            height: canvas.height,
+            paddingMm,
+            paddingPx
         });
         
         // Get intensity from slider
