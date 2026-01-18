@@ -43,8 +43,6 @@ export async function renderTextToCanvas(editorElement, options = {}) {
         tempContainer.style.height = 'auto';
         tempContainer.style.whiteSpace = 'pre'; // Disable wrapping, respect newlines
         tempContainer.style.display = 'inline-block'; // Ensure it wraps content tightly
-        // Note: inline-block might affect ql-editor styles?
-        // ql-editor usually expects block. Let's try min-width
         tempContainer.style.minWidth = '100px';
     } else {
         // Portrait Mode
@@ -54,17 +52,6 @@ export async function renderTextToCanvas(editorElement, options = {}) {
         tempContainer.style.whiteSpace = 'normal'; // Standard wrapping
         tempContainer.style.overflow = 'visible';
     }
-
-    // Apply padding to the temporary container?
-    // No, padding is applied to the final canvas.
-    // Wait, for Portrait, if we set width to usableWidth, the content fills that.
-    // If we want the text to look padded, we can add padding to tempContainer,
-    // but then we need to increase tempContainer width to match PRINTER_WIDTH?
-    // User requirement: "padding is with reference to the print strip, not the position of the text."
-
-    // Implementation Decision:
-    // Render content tight (width = usableWidth).
-    // Then paste onto final canvas at offset (paddingHorizontal, paddingVertical).
 
     // Copy content
     const qlEditor = editorElement.querySelector('.ql-editor') || editorElement;
@@ -110,8 +97,6 @@ export async function renderTextToCanvas(editorElement, options = {}) {
 
         if (orientation === 'landscape') {
             // LANDSCAPE (BANNER) MODE
-            // Source: [Wide Content] x [Height constrained to usableWidth]
-            // Dest:   [PRINTER_WIDTH] x [Long Strip based on content Width]
 
             // Final Dimensions
             // Width: Fixed at PRINTER_WIDTH
@@ -121,71 +106,40 @@ export async function renderTextToCanvas(editorElement, options = {}) {
 
             ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
 
-            // Rotate 90 degrees clockwise?
-            // "Orientation of printing by 90 degrees"
-            // If I hold the paper strip:
-            // Portrait:
-            // [ A B C ]
-            // [ D E F ]
-            //
-            // Landscape (Banner):
-            // Text "A" should be printed such that if I rotate the paper 90 deg, I read "A".
-            // Printer prints top row first.
-            // Row 1: Left side of A ...
-            // This effectively means rotating the Source Image 90 degrees Clockwise or Counter-Clockwise?
-            // Usually Banner text runs "down" the strip.
-            // Text: "HELLO"
-            // H
-            // E
-            // L
-            // ...
-            // This is -90 deg (Counter Clockwise) relative to standard text?
-            // Or +90?
-            // Let's assume standard "Rotate Right" (Clockwise) so top of text is Right side of paper.
-
             ctx.save();
 
-            // Translate to center of where we want to draw
-            // We want to draw the source image rotated.
-            // Center of final canvas: (384/2, finalHeight/2)
-            // But it's easier to map corners.
+            // Align to Right Side (Top of Banner Text is Right of Strip)
+            // PRINTER_WIDTH is the width of the strip.
+            // We want text to start at (PRINTER_WIDTH - paddingHorizontal).
+            // This maps to the "Top" of the source text.
 
-            // Rotate 90 deg CW:
-            // (x, y) -> (-y, x)
-            // We want the text to start at top of strip (plus paddingVertical).
+            // Transform:
+            // Translate to Start Position:
+            // X: PRINTER_WIDTH - paddingHorizontal
+            // Y: paddingVertical
 
-            // Let's translate to the top-right area where the text starts?
-            // Better: Translate to (PRINTER_WIDTH / 2, finalCanvas.height / 2) ? No.
+            ctx.translate(PRINTER_WIDTH - paddingHorizontal, paddingVertical);
 
-            // Let's Rotate 90deg CW.
-            // Origin becomes Top-Right. X points Down. Y points Left.
-
-            // Let's try explicit mapping.
-            // We want source (0,0) (Top-Left of text) to end up at (Start X, Start Y).
-            // If we rotate 90 deg CW:
-            // Top-Left of text "H" -> Top-Right of paper?
-            // Then text reads down the paper.
-            // Top of text faces right edge of paper.
-
-            // Center the content in the printable width (vertical in source, horizontal in dest)
-            // Printable width on paper is usableWidth.
-            // We have paddingHorizontal on both sides.
-
-            // Move to center of width
-            ctx.translate(PRINTER_WIDTH / 2, paddingVertical + contentWidth / 2);
+            // Rotate 90 deg CW
             ctx.rotate(90 * Math.PI / 180);
 
             // Draw Image
-            // Image center is at (contentWidth/2, contentHeight/2)
-            // We want to draw it centered at current origin.
-            ctx.drawImage(sourceCanvas, -contentWidth / 2, -contentHeight / 2);
+            // After rotation:
+            // X axis points Down.
+            // Y axis points Left.
+            // We want to draw source image such that:
+            // Source (0,0) is at origin.
+            // Source X (Reading direction) goes along New X (Down).
+            // Source Y (Line stack direction) goes along New Y (Left).
+
+            // Since drawImage draws at (x,y) in current coord system:
+            // We draw at (0,0).
+            ctx.drawImage(sourceCanvas, 0, 0);
 
             ctx.restore();
 
         } else {
             // PORTRAIT MODE
-            // Source: [usableWidth] x [Height]
-            // Dest:   [PRINTER_WIDTH] x [Height + paddingVertical * 2]
 
             finalCanvas.width = PRINTER_WIDTH;
             finalCanvas.height = contentHeight + (paddingVertical * 2);
