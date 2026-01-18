@@ -1,9 +1,15 @@
 # catprinter
-MXW01 Catprinter website for text and images.
+Website for text and images printing on Bluetooth Cat Printers.
 
-Printer technology and protocol inspired by and copied from https://github.com/jeremy46231/catprinter.
+This project supports:
+1. **MXW01** ("Pink" printers)
+2. **Standard Cat Printers** ("Blue" printers, e.g., SC03h, GB01, GT01, etc.)
 
-**THIS CURRENTLY IS TESTED TO WORK WITH MXW01 CAT PRINTERS *ONLY***
+Printer technology and protocol reverse-engineering inspired by and adapted from:
+* https://github.com/jeremy46231/catprinter (MXW01 protocol)
+* https://github.com/NaitLee/Cat-Printer (Standard/Blue protocol)
+
+The application automatically detects the connected printer model and selects the appropriate driver.
 
 ![Text Mode](img/screenshot_text_mode.png)
 Text Mode
