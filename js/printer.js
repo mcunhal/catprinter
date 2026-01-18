@@ -431,10 +431,9 @@ class StandardDriver {
       for (let y = 0; y < height; y++) {
         let rowBytes = encode1bppRow(rotatedRows[y]);
 
-        // Reverse bits in each byte
-        for(let i=0; i<rowBytes.length; i++) {
-          rowBytes[i] = reverseBits(rowBytes[i]);
-        }
+        // Note: NaitLee's python code reverses bits because it reads MSB-packed PBM files.
+        // Our encode1bppRow helper produces LSB-packed bytes (bit 0 is pixel 0), which matches
+        // what the printer expects. Therefore, we do NOT reverse bits here.
 
         await this.sendCommand(0xA2, rowBytes);
 
