@@ -490,7 +490,7 @@ export async function printImage(canvas, options = {}) {
     
     // Transfer data chunks
     while (pos < buffer.length) {
-      const chunk = buffer.slice(pos, pos + chunkSize);
+      const chunk = buffer.subarray(pos, pos + chunkSize);
       chunkCount++;
       
       logger.debug(`Sending chunk ${chunkCount}/${totalChunks}`, { 
