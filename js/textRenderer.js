@@ -39,11 +39,11 @@ export async function renderTextToCanvas(editorElement, options = {}) {
         // Banner Mode (Landscape)
         // Content flows horizontally (visual) which is vertical on paper
         // So we don't constrain width, but we must check if height exceeds usableWidth
-        tempContainer.style.width = 'auto'; // Allow growing wide
+        tempContainer.style.width = 'fit-content'; // Allow growing wide but fit content
         tempContainer.style.height = 'auto';
         tempContainer.style.whiteSpace = 'pre'; // Disable wrapping, respect newlines
         tempContainer.style.display = 'inline-block'; // Ensure it wraps content tightly
-        tempContainer.style.minWidth = '100px';
+        tempContainer.style.minWidth = 'auto';
     } else {
         // Portrait Mode
         // Standard width constraint
