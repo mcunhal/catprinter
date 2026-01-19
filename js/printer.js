@@ -397,6 +397,12 @@ export async function printImage(canvas, options = {}) {
     const row = new Array(width).fill(false);
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
+      // Check Alpha channel (index 3). If transparent (< 128), treat as white (false).
+      const alpha = imgData[i+3];
+      if (alpha < 128) {
+        row[x] = false;
+        continue;
+      }
       const lum = 0.299 * imgData[i] + 0.587 * imgData[i+1] + 0.114 * imgData[i+2];
       row[x] = lum < 128;
     }

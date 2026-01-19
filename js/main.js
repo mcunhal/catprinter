@@ -24,7 +24,6 @@ const printDensityInput = document.getElementById('printDensity');
 const printDensityDisplay = document.getElementById('printDensityDisplay');
 const paddingVerticalInput = document.getElementById('paddingVertical');
 const paddingHorizontalInput = document.getElementById('paddingHorizontal');
-const textOrientationSelect = document.getElementById('textOrientation');
 const customFontSizeInput = document.getElementById('customFontSize');
 const applyFontSizeBtn = document.getElementById('applyFontSizeBtn');
 // Preview
@@ -98,10 +97,6 @@ function init() {
 
     if (paddingHorizontalInput) {
         paddingHorizontalInput.addEventListener('input', schedulePreviewUpdate);
-    }
-
-    if (textOrientationSelect) {
-        textOrientationSelect.addEventListener('change', schedulePreviewUpdate);
     }
 
     if (applyFontSizeBtn && customFontSizeInput) {
@@ -682,15 +677,13 @@ async function updateTextPreview() {
         
         const paddingVerticalMm = parseInt(paddingVerticalInput.value) || 0;
         const paddingHorizontalMm = parseInt(paddingHorizontalInput.value) || 0;
-        const orientation = textOrientationSelect.value;
 
         const paddingVerticalPx = Math.round(paddingVerticalMm * 8);
         const paddingHorizontalPx = Math.round(paddingHorizontalMm * 8);
 
         const result = await renderTextToCanvas(editorElement, {
             paddingVertical: paddingVerticalPx,
-            paddingHorizontal: paddingHorizontalPx,
-            orientation: orientation
+            paddingHorizontal: paddingHorizontalPx
         });
 
         const canvas = result.canvas || result; // Handle both old and new return signature temporarily
@@ -713,12 +706,7 @@ async function updateTextPreview() {
         }
 
         // Set up canvas for display
-        if (orientation === 'landscape') {
-            canvas.style.width = 'auto';
-            canvas.style.maxWidth = '100%';
-        } else {
-            canvas.style.width = '100%';
-        }
+        canvas.style.width = '100%';
         canvas.style.height = 'auto';
         canvas.style.imageRendering = 'pixelated';
         canvas.style.display = 'block';
@@ -764,15 +752,13 @@ async function printText() {
         const editorElement = document.getElementById('editor');
         const paddingVerticalMm = parseInt(paddingVerticalInput.value) || 0;
         const paddingHorizontalMm = parseInt(paddingHorizontalInput.value) || 0;
-        const orientation = textOrientationSelect.value;
 
         const paddingVerticalPx = Math.round(paddingVerticalMm * 8);
         const paddingHorizontalPx = Math.round(paddingHorizontalMm * 8);
 
         const result = await renderTextToCanvas(editorElement, {
             paddingVertical: paddingVerticalPx,
-            paddingHorizontal: paddingHorizontalPx,
-            orientation: orientation
+            paddingHorizontal: paddingHorizontalPx
         });
 
         const canvas = result.canvas || result;
@@ -781,8 +767,7 @@ async function printText() {
             width: canvas.width,
             height: canvas.height,
             paddingVerticalMm,
-            paddingHorizontalMm,
-            orientation
+            paddingHorizontalMm
         });
         
         // Get intensity from slider
