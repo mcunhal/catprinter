@@ -43,16 +43,16 @@
         <p>Webapp for the MXW01 model of thermal printer.</p>
         
         <!-- Mode Toggle -->
-        <div class="mode-toggle">
-            <button id="textModeBtn" class="mode-btn mode-receipt active">Text Mode</button>
-            <button id="imageModeBtn" class="mode-btn mode-image">Image Mode</button>
+        <div class="mode-toggle" role="tablist" aria-label="Mode Selection">
+            <button id="textModeBtn" class="mode-btn mode-receipt active" role="tab" aria-selected="true" aria-controls="textModeContent">Text Mode</button>
+            <button id="imageModeBtn" class="mode-btn mode-image" role="tab" aria-selected="false" aria-controls="imageModeContent">Image Mode</button>
         </div>
     </header>
 
     <main>
         <div class="panels">
             <!-- Text/Receipt Mode Content -->
-            <div id="textModeContent" class="mode-content active">
+            <div id="textModeContent" class="mode-content active" role="tabpanel" aria-labelledby="textModeBtn">
                 <!-- Left Panel: Editor -->
                 <section class="config-panel" style="display: flex; flex-direction: column;">
                     <div class="config-section">
@@ -99,7 +99,7 @@
             </div>
             
             <!-- Image Mode Content -->
-            <div id="imageModeContent" class="mode-content">
+            <div id="imageModeContent" class="mode-content" role="tabpanel" aria-labelledby="imageModeBtn">
                 <!-- Left Panel: Image Configuration -->
                 <section class="config-panel image-config-panel">
                     <div class="config-section">
@@ -113,11 +113,11 @@
                         <div class="input-group">
                             <label>Rotation</label>
                             <div class="rotation-controls">
-                                <button id="rotateLeftBtn" class="btn-icon" title="Rotate Left (90° Counter-Clockwise)">
+                                <button id="rotateLeftBtn" class="btn-icon" title="Rotate Left (90° Counter-Clockwise)" aria-label="Rotate Left 90 degrees">
                                     <span class="rotation-icon">↺</span>
                                 </button>
                                 <span id="rotationDisplay">0°</span>
-                                <button id="rotateRightBtn" class="btn-icon" title="Rotate Right (90° Clockwise)">
+                                <button id="rotateRightBtn" class="btn-icon" title="Rotate Right (90° Clockwise)" aria-label="Rotate Right 90 degrees">
                                     <span class="rotation-icon">↻</span>
                                 </button>
                             </div>
@@ -195,12 +195,12 @@
                     <button id="clearLogBtn">Clear Log</button>
                 </div>
                 
-                <div class="log-wrapper" id="logWrapper">
+                <div class="log-wrapper" id="logWrapper" role="log" aria-live="polite">
                     <!-- Log entries will be added here -->
                 </div>
                 
                 <div class="progress-container" id="printProgress">
-                    <div class="progress-bar" id="printProgressBar"></div>
+                    <div class="progress-bar" id="printProgressBar" role="progressbar" aria-label="Print Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
                 </div>
             </section>
         </div>
@@ -208,8 +208,8 @@
 
     <footer>
         <p><a href="https://github.com/dropalltables/catprinter" target="_blank">catprinter</a></p>
-        <div class="battery-indicator" id="batteryIndicator">
-            <span class="battery-icon">🔋</span>
+        <div class="battery-indicator" id="batteryIndicator" role="status" aria-label="Battery Level">
+            <span class="battery-icon" aria-hidden="true">🔋</span>
             <span class="battery-level" id="batteryLevel">--</span>
         </div>
     </footer>

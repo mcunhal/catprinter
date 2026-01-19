@@ -175,6 +175,7 @@ export function setupLoggerUI(logWrapperElement, progressBarElement) {
     
     if (entry.type === 'progress' && progressBarElement) {
       progressBarElement.style.width = `${entry.percentage}%`;
+      progressBarElement.setAttribute('aria-valuenow', entry.percentage);
       return;
     }
     
