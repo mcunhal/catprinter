@@ -94,6 +94,11 @@ function processImageTo1bpp(canvas) {
     const row = new Array(width).fill(false);
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
+      // Check Alpha channel (index 3). If transparent (< 128), treat as white (false).
+      if (imgData[i+3] < 128) {
+        row[x] = false;
+        continue;
+      }
       // Luminance: 0.299*R + 0.587*G + 0.114*B
       const lum = 0.299 * imgData[i] + 0.587 * imgData[i+1] + 0.114 * imgData[i+2];
       row[x] = lum < 128; // Thresholding
@@ -158,7 +163,7 @@ class MXW01Driver {
     const header = [0x22,0x21,cmdId & 0xFF,0x00,len & 0xFF,(len>>8)&0xFF];
     const cmd = new Uint8Array(header.concat(Array.from(payload)));
     const crc = calculateCRC8(payload);
-    
+
     logger.debug(`[MXW01] Creating command 0x${cmdId.toString(16).toUpperCase()}`, {
       payloadLength: len,
       crc: '0x' + crc.toString(16).padStart(2, '0')

@@ -4,65 +4,90 @@ import { PRINTER_WIDTH } from './printer.js';
  * Renders the content of the Quill editor to a canvas using html2canvas.
  * @param {HTMLElement} editorElement - The Quill editor's root element (the one containing the content).
  * @param {Object} options - Rendering options.
- * @param {number} options.padding - Vertical padding in pixels.
- * @returns {Promise<HTMLCanvasElement>} The generated canvas.
+ * @param {number} options.paddingVertical - Vertical padding in pixels.
+ * @param {number} options.paddingHorizontal - Horizontal padding in pixels.
+ * @returns {Promise<{canvas: HTMLCanvasElement, warnings: string[]}>} The generated canvas and any warnings.
  */
 export async function renderTextToCanvas(editorElement, options = {}) {
     if (!editorElement) {
         throw new Error("Editor element not found");
     }
 
-    // We need to ensure the element we capture is styled exactly like the printer output (384px wide).
-    // We'll clone the content to a temporary off-screen container to render it.
+    const paddingVertical = options.paddingVertical || 0;
+    const paddingHorizontal = options.paddingHorizontal || 0;
+    const warnings = [];
+
+    // Calculate usable width for content
+    const usableWidth = PRINTER_WIDTH - (paddingHorizontal * 2);
+
+    // Create temporary off-screen container
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'absolute';
     tempContainer.style.top = '-9999px';
     tempContainer.style.left = '-9999px';
-    tempContainer.style.width = `${PRINTER_WIDTH}px`;
+    // White background (looks like paper)
     tempContainer.style.backgroundColor = 'white';
     tempContainer.style.color = 'black';
-    tempContainer.style.fontFamily = 'sans-serif'; // Or specific font if needed
+    tempContainer.style.fontFamily = 'sans-serif';
 
-    // Fix: Ensure height is auto to avoid full-screen height
-    tempContainer.style.height = 'auto';
-    tempContainer.style.overflow = 'visible';
-
-    // Apply vertical padding if provided
-    if (options.padding !== undefined) {
-        tempContainer.style.paddingTop = `${options.padding}px`;
-        tempContainer.style.paddingBottom = `${options.padding}px`;
-    }
-
-    // Add ql-editor class to ensure Quill styles (alignment, etc.) are applied
+    // Add ql-editor class for Quill styles
     tempContainer.className = 'ql-editor';
 
-    // Copy the inner HTML of the editor
-    // Quill uses .ql-editor which has the content
+    // Portrait Mode (Default)
+    // Standard width constraint
+    tempContainer.style.width = `${usableWidth}px`;
+    tempContainer.style.height = 'auto';
+    tempContainer.style.whiteSpace = 'normal'; // Standard wrapping
+    tempContainer.style.overflow = 'visible';
+
+    // Copy content
     const qlEditor = editorElement.querySelector('.ql-editor') || editorElement;
     tempContainer.innerHTML = qlEditor.innerHTML;
 
-    // Append to body to render
+    // Append to body to measure and render
     document.body.appendChild(tempContainer);
 
     try {
-        // Use html2canvas to render
-        // We assume html2canvas is loaded globally via CDN in index.html
         if (typeof window.html2canvas === 'undefined') {
             throw new Error("html2canvas not loaded");
         }
 
-        const canvas = await window.html2canvas(tempContainer, {
-            width: PRINTER_WIDTH,
-            scale: 1, // 1:1 scale for pixel perfection
-            backgroundColor: '#ffffff',
+        // Measure content dimensions
+        const rect = tempContainer.getBoundingClientRect();
+        const contentWidth = rect.width;
+        const contentHeight = rect.height;
+
+        // Render the content to a temporary canvas
+        const sourceCanvas = await window.html2canvas(tempContainer, {
+            backgroundColor: '#ffffff', // White background
+            scale: 1,
             logging: false,
-            // Ensure we capture styling correctly
-            windowWidth: PRINTER_WIDTH
+            width: contentWidth,
+            height: contentHeight,
+            windowWidth: Math.max(contentWidth, PRINTER_WIDTH) // ensure context is wide enough
         });
 
-        return canvas;
+        // Create final canvas
+        const finalCanvas = document.createElement('canvas');
+        const ctx = finalCanvas.getContext('2d');
+
+        // PORTRAIT MODE
+
+        finalCanvas.width = PRINTER_WIDTH;
+        finalCanvas.height = contentHeight + (paddingVertical * 2);
+
+        // Fill background with white
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+        // Draw centered horizontally
+        // paddingHorizontal is the gap on left.
+        // We rendered source at usableWidth.
+        ctx.drawImage(sourceCanvas, paddingHorizontal, paddingVertical);
+
+        return { canvas: finalCanvas, warnings };
+
     } finally {
-        // Cleanup
         document.body.removeChild(tempContainer);
     }
 }
