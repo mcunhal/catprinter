@@ -43,16 +43,16 @@
         <p>Webapp for the MXW01 model of thermal printer.</p>
         
         <!-- Mode Toggle -->
-        <div class="mode-toggle">
-            <button id="textModeBtn" class="mode-btn mode-receipt active">Text Mode</button>
-            <button id="imageModeBtn" class="mode-btn mode-image">Image Mode</button>
+        <div class="mode-toggle" role="tablist" aria-label="Print Modes">
+            <button id="textModeBtn" class="mode-btn mode-receipt active" role="tab" aria-selected="true" aria-controls="textModeContent">Text Mode</button>
+            <button id="imageModeBtn" class="mode-btn mode-image" role="tab" aria-selected="false" aria-controls="imageModeContent">Image Mode</button>
         </div>
     </header>
 
     <main>
         <div class="panels">
             <!-- Text/Receipt Mode Content -->
-            <div id="textModeContent" class="mode-content active">
+            <div id="textModeContent" class="mode-content active" role="tabpanel" aria-labelledby="textModeBtn" tabindex="0">
                 <!-- Left Panel: Editor -->
                 <section class="config-panel" style="display: flex; flex-direction: column;">
                     <div class="config-section">
@@ -99,7 +99,7 @@
             </div>
             
             <!-- Image Mode Content -->
-            <div id="imageModeContent" class="mode-content">
+            <div id="imageModeContent" class="mode-content" role="tabpanel" aria-labelledby="imageModeBtn" tabindex="0">
                 <!-- Left Panel: Image Configuration -->
                 <section class="config-panel image-config-panel">
                     <div class="config-section">
@@ -113,11 +113,11 @@
                         <div class="input-group">
                             <label>Rotation</label>
                             <div class="rotation-controls">
-                                <button id="rotateLeftBtn" class="btn-icon" title="Rotate Left (90° Counter-Clockwise)">
+                                <button id="rotateLeftBtn" class="btn-icon" title="Rotate Left (90° Counter-Clockwise)" aria-label="Rotate Left 90 degrees">
                                     <span class="rotation-icon">↺</span>
                                 </button>
                                 <span id="rotationDisplay">0°</span>
-                                <button id="rotateRightBtn" class="btn-icon" title="Rotate Right (90° Clockwise)">
+                                <button id="rotateRightBtn" class="btn-icon" title="Rotate Right (90° Clockwise)" aria-label="Rotate Right 90 degrees">
                                     <span class="rotation-icon">↻</span>
                                 </button>
                             </div>

@@ -157,6 +157,10 @@ function setActiveMode(mode) {
     textModeBtn.classList.toggle('active', mode === 'text');
     imageModeBtn.classList.toggle('active', mode === 'image');
     
+    // Update ARIA states
+    textModeBtn.setAttribute('aria-selected', mode === 'text');
+    imageModeBtn.setAttribute('aria-selected', mode === 'image');
+
     // Update content visibility
     textModeContent.classList.toggle('active', mode === 'text');
     imageModeContent.classList.toggle('active', mode === 'image');
