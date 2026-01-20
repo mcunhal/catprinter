@@ -189,43 +189,6 @@ class MXW01Driver {
       payloadLength: len
     });
 
-
-    // Bind handleNotification to this instance
-    this.handleNotification = this.handleNotification.bind(this);
-    this.notifyChar.addEventListener('characteristicvaluechanged', this.handleNotification);
-  }
-
-  createCommand(cmdId, payload) {
-    const len = payload.length;
-    const header = [0x22,0x21,cmdId & 0xFF,0x00,len & 0xFF,(len>>8)&0xFF];
-    const cmd = new Uint8Array(header.concat(Array.from(payload)));
-    const crc = calculateCRC8(payload);
-    
-    logger.debug(`[MXW01] Creating command 0x${cmdId.toString(16).toUpperCase()}`, {
-      payloadLength: len,
-      crc: '0x' + crc.toString(16).padStart(2, '0')
-    });
-
-    return new Uint8Array([...cmd, crc, 0xFF]);
-  }
-
-  handleNotification(event) {
-    const data = new Uint8Array(event.target.value.buffer);
-
-    // Check for Magic Bytes: 0x22 0x21
-    if (data[0] !== 0x22 || data[1] !== 0x21) {
-      logger.debug(`[MXW01] Ignoring notification with unexpected header: ${data[0].toString(16)} ${data[1].toString(16)}`);
-      return;
-    }
-
-    const cmdId = data[2];
-    const len = data[4] | (data[5] << 8);
-    const payload = data.slice(6, 6 + len);
-
-    logger.debug(`[MXW01] Received notification for command 0x${cmdId.toString(16).toUpperCase()}`, {
-      payloadLength: len
-    });
-
     const resolver = this.pendingResolvers.get(cmdId);
     if (resolver) {
       resolver(payload);

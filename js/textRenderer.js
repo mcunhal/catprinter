@@ -25,8 +25,8 @@ export async function renderTextToCanvas(editorElement, options = {}) {
     tempContainer.style.position = 'absolute';
     tempContainer.style.top = '-9999px';
     tempContainer.style.left = '-9999px';
-    // Transparent background
-    tempContainer.style.backgroundColor = 'transparent';
+    // White background (looks like paper)
+    tempContainer.style.backgroundColor = 'white';
     tempContainer.style.color = 'black';
     tempContainer.style.fontFamily = 'sans-serif';
 
@@ -59,7 +59,7 @@ export async function renderTextToCanvas(editorElement, options = {}) {
 
         // Render the content to a temporary canvas
         const sourceCanvas = await window.html2canvas(tempContainer, {
-            backgroundColor: null, // Transparent background
+            backgroundColor: '#ffffff', // White background
             scale: 1,
             logging: false,
             width: contentWidth,
@@ -70,12 +70,15 @@ export async function renderTextToCanvas(editorElement, options = {}) {
         // Create final canvas
         const finalCanvas = document.createElement('canvas');
         const ctx = finalCanvas.getContext('2d');
-        // Do NOT fill with white (ctx.fillStyle = 'white'; ctx.fillRect...)
 
         // PORTRAIT MODE
 
         finalCanvas.width = PRINTER_WIDTH;
         finalCanvas.height = contentHeight + (paddingVertical * 2);
+
+        // Fill background with white
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
 
         // Draw centered horizontally
         // paddingHorizontal is the gap on left.
