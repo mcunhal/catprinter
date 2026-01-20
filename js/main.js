@@ -123,11 +123,6 @@ function init() {
     setTimeout(updateTextPreview, 500);
 }
 
-function schedulePreviewUpdate() {
-    if (window.previewTimeout) clearTimeout(window.previewTimeout);
-    window.previewTimeout = setTimeout(updateTextPreview, 500);
-}
-
 // Initialize Quill Editor
 function initQuill() {
     // Import and register Size attributor
@@ -201,6 +196,10 @@ function setActiveMode(mode) {
     textModeBtn.classList.toggle('active', mode === 'text');
     imageModeBtn.classList.toggle('active', mode === 'image');
     
+    // Update ARIA states
+    textModeBtn.setAttribute('aria-selected', mode === 'text');
+    imageModeBtn.setAttribute('aria-selected', mode === 'image');
+
     // Update content visibility
     textModeContent.classList.toggle('active', mode === 'text');
     imageModeContent.classList.toggle('active', mode === 'image');
@@ -717,7 +716,6 @@ async function updateTextPreview() {
         textPreview.appendChild(canvas);
     } catch (err) {
         logger.warn("Failed to update text preview", {error: err.message});
-        console.error(err);
     }
 }
 
