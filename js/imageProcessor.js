@@ -243,7 +243,7 @@ function applyFloydSteinberg(imageData, threshold) {
     const width = imageData.width;
     const height = imageData.height;
     const data = imageData.data;
-    const luminance = new Array(width * height);
+    const luminance = new Float32Array(width * height);
     
     // Extract luminance
     for (let i = 0; i < height; i++) {
