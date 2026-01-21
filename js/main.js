@@ -337,6 +337,18 @@ function setupDragAndDrop() {
     
     // Handle the drop event
     dropZone.addEventListener('drop', handleDrop, false);
+
+    // Make dropzone clickable and keyboard accessible
+    dropZone.addEventListener('click', () => {
+        imageUploadInput.click();
+    });
+
+    dropZone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            imageUploadInput.click();
+        }
+    });
     
     async function handleDrop(e) {
         const dt = e.dataTransfer;
