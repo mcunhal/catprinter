@@ -3,7 +3,6 @@ MXW01 Catprinter website for text and images.
 
 Printer technology and protocol inspired by and copied from https://github.com/jeremy46231/catprinter.
 
-**THIS CURRENTLY IS TESTED TO WORK WITH MXW01 CAT PRINTERS *ONLY***
 
 ![Text Mode](img/screenshot_text_mode.png)
 Text Mode
