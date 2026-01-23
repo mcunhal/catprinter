@@ -62,6 +62,12 @@ let quill = null;
 let batteryCheckIntervalId = null;
 const BATTERY_CHECK_INTERVAL = 30000; // 30 seconds
 
+// === Preview Scheduling ===
+function schedulePreviewUpdate() {
+    if (window.previewTimeout) clearTimeout(window.previewTimeout);
+    window.previewTimeout = setTimeout(updateTextPreview, 500);
+}
+
 // === Initialize ===
 function init() {
     
@@ -115,6 +121,14 @@ function init() {
                         quill.format('size', `${size}px`);
                     }
                 }
+            }
+        });
+
+        // Add Enter key support
+        customFontSizeInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyFontSizeBtn.click();
             }
         });
     }
