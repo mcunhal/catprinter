@@ -1,0 +1,7 @@
+127.0.0.1 - - [23/Jan/2026 14:40:54] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [23/Jan/2026 14:40:54] "GET /css/style.css HTTP/1.1" 200 -
+127.0.0.1 - - [23/Jan/2026 14:40:54] "GET /js/main.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Jan/2026 14:40:54] "GET /js/printer.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Jan/2026 14:40:54] "GET /js/imageProcessor.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Jan/2026 14:40:54] "GET /js/logger.js HTTP/1.1" 200 -
+127.0.0.1 - - [23/Jan/2026 14:40:54] "GET /js/textRenderer.js HTTP/1.1" 200 -
