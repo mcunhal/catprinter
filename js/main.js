@@ -519,6 +519,10 @@ async function printProcessedImage() {
             setTimeout(() => hidePrintingStatus(), 3000);
             return;
         }
+
+        // Set loading state
+        printImageBtn.disabled = true;
+        printImageBtn.textContent = 'Printing...';
         
         // Show printing status
         showPrintingStatus('Printing image...');
@@ -537,6 +541,11 @@ async function printProcessedImage() {
         logger.error('Print error', { message: err.message });
         showPrintingStatus(`Error: ${err.message}`, 'error');
         setTimeout(() => hidePrintingStatus(), 5000);
+    } finally {
+        // Reset button state
+        printImageBtn.textContent = 'Print';
+        // Re-evaluate button disabled state based on connection
+        updatePrintButtonState();
     }
 }
 
@@ -570,6 +579,8 @@ function updatePrintButtonState() {
     const buttonText = connected ? 'Reconnect' : 'Connect Printer';
     connectTextBtn.textContent = buttonText;
     connectImageBtn.textContent = buttonText;
+    connectTextBtn.disabled = false;
+    connectImageBtn.disabled = false;
     
     // Start or stop battery check based on connection status
     if (connected && !batteryCheckIntervalId) {
@@ -581,6 +592,13 @@ function updatePrintButtonState() {
 
 async function handleConnectPrinter() {
     try {
+        // Set loading state
+        const loadingText = 'Connecting...';
+        connectTextBtn.disabled = true;
+        connectTextBtn.textContent = loadingText;
+        connectImageBtn.disabled = true;
+        connectImageBtn.textContent = loadingText;
+
         showPrintingStatus('Connecting to printer...');
         logger.info('Connecting to printer');
         await connectPrinter();
@@ -591,9 +609,6 @@ async function handleConnectPrinter() {
         // Start periodic battery check
         startBatteryCheck();
         
-        // Update print button state
-        updatePrintButtonState();
-        
         showPrintingStatus('Printer connected successfully!', 'success');
         setTimeout(() => hidePrintingStatus(), 3000);
     } catch (err) {
@@ -601,6 +616,9 @@ async function handleConnectPrinter() {
         logger.error('Connection error', { message: err.message });
         showPrintingStatus(`Error: ${err.message}`, 'error');
         setTimeout(() => hidePrintingStatus(), 5000);
+    } finally {
+        // Update print button state (handles text and disabled status)
+        updatePrintButtonState();
     }
 }
 
@@ -751,6 +769,10 @@ async function printText() {
             setTimeout(() => hidePrintingStatus(), 3000);
             return;
         }
+
+        // Set loading state
+        printTextBtn.disabled = true;
+        printTextBtn.textContent = 'Printing...';
         
         // Show printing status
         showPrintingStatus('Printing text...');
@@ -794,6 +816,11 @@ async function printText() {
         logger.error('Print error', { message: err.message });
         showPrintingStatus(`Error: ${err.message}`, 'error');
         setTimeout(() => hidePrintingStatus(), 5000);
+    } finally {
+        // Reset button state
+        printTextBtn.textContent = 'Print';
+        // Re-evaluate button disabled state based on connection
+        updatePrintButtonState();
     }
 }
 
