@@ -108,10 +108,8 @@ function init() {
         paddingHorizontalInput.addEventListener('input', schedulePreviewUpdate);
     }
 
-    console.log('Setup Font Size Listener', !!applyFontSizeBtn, !!customFontSizeInput);
     if (applyFontSizeBtn && customFontSizeInput) {
         applyFontSizeBtn.addEventListener('click', () => {
-            console.log('Apply Button Clicked');
             if (!quill) return;
             const size = parseInt(customFontSizeInput.value);
             if (size > 0) {
@@ -592,7 +590,7 @@ function updatePrintButtonState() {
     }
     
     // Update connect buttons
-    const buttonText = connected ? 'Reconnect' : 'Connect Printer';
+    const buttonText = connected ? 'Disconnect' : 'Connect Printer';
     connectTextBtn.textContent = buttonText;
     connectImageBtn.textContent = buttonText;
     connectTextBtn.disabled = false;

@@ -601,7 +601,6 @@ export async function connectPrinter() {
     }
 
     logger.info(`Printer found: "${device.name}"`);
-    device.addEventListener('gattserverdisconnected', onDisconnected);
     const server = await device.gatt.connect();
     activeDevice = device;
     
@@ -610,6 +609,9 @@ export async function connectPrinter() {
         const services = await server.getPrimaryServices();
         logger.info('Discovered Services:', services.map(s => s.uuid));
     } catch (e) { logger.warn('Service discovery debug dump failed', e); }
+
+    // Register disconnect listener ONLY after connection is stable-ish
+    device.addEventListener('gattserverdisconnected', onDisconnected);
 
     let svc;
     try {
