@@ -73,29 +73,30 @@
                 <p>Your canvas is empty.</p>
                 <p style="font-size: 0.8rem; margin-top: 8px;">Add blocks to design your print.</p>
             </div>
+
+            <!-- In-Flow Add Controls -->
+            <div id="addBlockControls" class="add-block-container">
+                <button id="addTextBtn" class="add-btn" aria-label="Add Text Block">
+                    <span class="icon">T</span> Text
+                </button>
+                <button id="addImageBtn" class="add-btn" aria-label="Add Image Block">
+                    <span class="icon">📷</span> Image
+                </button>
+                <button id="addQRBtn" class="add-btn" aria-label="Add QR Code Block">
+                    <span class="icon">🏁</span> QR Code
+                </button>
+            </div>
         </div>
     </main>
 
-    <div class="fab-container" role="toolbar" aria-label="Add content blocks">
-        <button id="addTextBtn" class="fab-btn" title="Add Text" aria-label="Add Text Block">
-            <span style="display:block; font-weight:bold; font-size: 1.2rem;">T</span>
-        </button>
-        <button id="addImageBtn" class="fab-btn" title="Add Image" aria-label="Add Image Block">
-            <span style="display:block; font-size: 1.2rem;">📷</span>
-        </button>
-        <button id="addQRBtn" class="fab-btn" title="Add QR Code" aria-label="Add QR Code Block">
-            <span style="display:block; font-size: 1.2rem;">🏁</span>
-        </button>
-    </div>
-
-    <!-- Log Modal -->
-    <div id="logBackdrop" class="log-overlay-backdrop" style="display: none;"></div>
-    <div id="logModal" class="log-modal" style="display: none;">
-        <div class="log-modal-header">
+    <!-- Log Drawer -->
+    <div id="logBackdrop" class="log-overlay-backdrop"></div>
+    <div id="logDrawer" class="log-drawer">
+        <div class="log-drawer-header">
             <h2>Printer Log</h2>
             <button id="closeLogBtn" class="btn-icon">×</button>
         </div>
-        <div class="log-modal-body">
+        <div class="log-drawer-body">
             <div id="logWrapper" class="log-wrapper"></div>
             <div class="progress-container" id="printProgress">
                 <div class="progress-bar" id="printProgressBar"></div>

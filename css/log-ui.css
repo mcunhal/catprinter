@@ -1,24 +1,51 @@
-
-/* Log Modal */
-.log-modal {
+/* Log Drawer - Replaces Modal */
+.log-drawer {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 90%;
-    max-width: 600px;
-    height: 80vh;
     background: white;
-    border: 1px solid var(--color-border);
     box-shadow: var(--shadow-lg);
-    border-radius: 8px;
     z-index: 200;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Default Hidden State */
 }
 
-.log-modal-header {
+/* Desktop: Right Sidebar */
+@media (min-width: 768px) {
+    .log-drawer {
+        top: 56px; /* Below header */
+        right: 0;
+        bottom: 0;
+        width: 320px;
+        border-left: 1px solid var(--color-border);
+        transform: translateX(100%);
+    }
+
+    .log-drawer.open {
+        transform: translateX(0);
+    }
+}
+
+/* Mobile: Bottom Sheet */
+@media (max-width: 767px) {
+    .log-drawer {
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 50vh;
+        border-top: 1px solid var(--color-border);
+        border-radius: 16px 16px 0 0;
+        transform: translateY(100%);
+    }
+
+    .log-drawer.open {
+        transform: translateY(0);
+    }
+}
+
+.log-drawer-header {
     padding: 12px 16px;
     background: #f8fafc;
     border-bottom: 1px solid var(--color-border);
@@ -27,21 +54,20 @@
     align-items: center;
 }
 
-.log-modal-header h2 {
-    font-size: 1rem;
+.log-drawer-header h2 {
+    font-size: 0.9rem;
     font-weight: 600;
     color: var(--color-primary);
 }
 
-.log-modal-body {
+.log-drawer-body {
     flex: 1;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    padding: 0;
 }
 
-/* Reusing log-panel styles from previous system but scoped */
+/* Reusing log styles */
 .log-wrapper {
     flex: 1;
     background: #1e1e1e;
@@ -49,7 +75,7 @@
     padding: 12px;
     overflow-y: auto;
     font-family: monospace;
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .log-entry {
@@ -74,4 +100,13 @@
     background: rgba(0,0,0,0.5);
     z-index: 150;
     backdrop-filter: blur(2px);
+
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.log-overlay-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
 }

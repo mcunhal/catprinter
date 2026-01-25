@@ -30,7 +30,7 @@ const paddingHorizontalInput = document.getElementById('paddingHorizontal');
 const clearLogBtn = document.getElementById('clearLogBtn');
 const showLogBtn = document.getElementById('showLogBtn');
 
-const logModal = document.getElementById('logModal');
+const logDrawer = document.getElementById('logDrawer');
 const logBackdrop = document.getElementById('logBackdrop');
 const closeLogBtn = document.getElementById('closeLogBtn');
 const logWrapper = document.getElementById('logWrapper');
@@ -183,14 +183,14 @@ clearLogBtn.addEventListener('click', () => {
 });
 
 showLogBtn.addEventListener('click', () => {
-    logModal.style.display = 'flex';
-    logBackdrop.style.display = 'block';
+    logDrawer.classList.add('open');
+    logBackdrop.classList.add('open');
     settingsPopover.classList.remove('active'); // Close settings
 });
 
 function closeLog() {
-    logModal.style.display = 'none';
-    logBackdrop.style.display = 'none';
+    logDrawer.classList.remove('open');
+    logBackdrop.classList.remove('open');
 }
 
 closeLogBtn.addEventListener('click', closeLog);
