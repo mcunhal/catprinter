@@ -66,6 +66,14 @@ export class BlockManager {
         return this.blocks.length;
     }
 
+    setPreviewMode(active) {
+        this.blocks.forEach(block => {
+            if (typeof block.onPreviewMode === 'function') {
+                block.onPreviewMode(active);
+            }
+        });
+    }
+
     async printAll(options = {}) {
         if (this.blocks.length === 0) {
             throw new Error("Canvas is empty");

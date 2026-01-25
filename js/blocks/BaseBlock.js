@@ -51,6 +51,11 @@ export class BaseBlock {
         this.header.appendChild(controls);
     }
 
+    // Lifecycle hook for preview mode
+    onPreviewMode(active) {
+        // Default: do nothing
+    }
+
     // To be overridden by subclasses
     render() {
         return this.container;

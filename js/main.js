@@ -176,17 +176,20 @@ document.addEventListener('click', (e) => {
 // Preview Toggle
 previewBtn.addEventListener('click', () => {
     document.body.classList.toggle('preview-mode');
+    const isPreview = document.body.classList.contains('preview-mode');
     previewBtn.classList.toggle('btn-primary'); // Highlight state
 
     // Optional: Hide/Show Add Block Controls
     const addControls = document.getElementById('addBlockControls');
-    if (document.body.classList.contains('preview-mode')) {
+    if (isPreview) {
         addControls.style.display = 'none';
         previewBtn.innerHTML = '📝'; // Edit icon
     } else {
         addControls.style.display = 'flex';
         previewBtn.innerHTML = '👁️'; // Eye icon
     }
+
+    manager.setPreviewMode(isPreview);
 });
 
 // Density Input

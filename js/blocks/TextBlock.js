@@ -45,6 +45,15 @@ export class TextBlock extends BaseBlock {
         // UX: Auto-focus if it's a new block? Maybe.
     }
 
+    onPreviewMode(active) {
+        if (!this.quill) return;
+        if (active) {
+            this.quill.disable();
+        } else {
+            this.quill.enable();
+        }
+    }
+
     async renderCanvas() {
         // Use the existing renderer
         // We need to pass the editor element. Quill creates a .ql-editor div inside our container.

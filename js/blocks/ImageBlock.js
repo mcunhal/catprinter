@@ -23,7 +23,17 @@ export class ImageBlock extends BaseBlock {
         // Controls
         this.settingsPanel = document.createElement('div');
         this.settingsPanel.className = 'image-settings-panel';
-        this.settingsPanel.style.display = 'none';
+        this.settingsPanel.style.display = 'none'; // Initially hidden
+
+        // Settings Toggle Button (Shown when image is loaded)
+        this.settingsToggleBtn = document.createElement('button');
+        this.settingsToggleBtn.innerHTML = '⚙️ Settings';
+        this.settingsToggleBtn.className = 'btn-settings-toggle';
+        this.settingsToggleBtn.style.display = 'none';
+        this.settingsToggleBtn.onclick = () => {
+            const isHidden = this.settingsPanel.style.display === 'none';
+            this.settingsPanel.style.display = isHidden ? 'flex' : 'none';
+        };
 
         this._buildSettingsUI();
         this._setupEvents();
@@ -31,6 +41,7 @@ export class ImageBlock extends BaseBlock {
         this.content.appendChild(this.dropZone);
         this.content.appendChild(this.fileInput);
         this.content.appendChild(this.previewCanvas);
+        this.content.appendChild(this.settingsToggleBtn);
         this.content.appendChild(this.settingsPanel);
     }
 
@@ -139,7 +150,9 @@ export class ImageBlock extends BaseBlock {
             // UI State Change
             this.dropZone.style.display = 'none';
             this.previewCanvas.style.display = 'block';
-            this.settingsPanel.style.display = 'flex';
+            this.settingsToggleBtn.style.display = 'block';
+            // Don't auto-open settings, keep it clean
+            this.settingsPanel.style.display = 'none';
         } catch (e) {
             console.error(e);
             this.dropZone.innerText = 'Error loading image';

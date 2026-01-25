@@ -73,3 +73,35 @@
 .preview-mode .block-content {
     margin: 0;
 }
+
+/* Image Settings Toggle */
+.btn-settings-toggle {
+    margin: 8px auto 0;
+    display: block;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    color: var(--color-text-light);
+    cursor: pointer;
+}
+
+.btn-settings-toggle:hover {
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+.preview-mode .btn-settings-toggle {
+    display: none !important;
+}
+
+/* Read-Only Text in Preview */
+.preview-mode .ql-disabled {
+    background-color: transparent !important;
+    opacity: 1 !important;
+}
+
+.preview-mode .ql-editor {
+    padding-top: 0; /* Tighten up spacing in preview */
+}
