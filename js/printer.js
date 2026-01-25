@@ -430,6 +430,12 @@ class StandardDriver {
       await this.sendCommand(0xBE, Uint8Array.of(0x01)); // Apply
       await sleep(50);
 
+      // 2d. Try Legacy Intensity (0xA2) just in case
+      // Some firmwares might respond to this instead/also
+      logger.debug(`[Standard] Sending Legacy Intensity (0xA2): ${intensity}`);
+      await this.sendCommand(0xA2, Uint8Array.of(intensity));
+      await sleep(50);
+
       // 3. Start Lattice (0xA6)
       logger.debug('[Standard] Sending Start Lattice');
       const latticeStart = new Uint8Array([0xaa, 0x55, 0x17, 0x38, 0x44, 0x5f, 0x5f, 0x5f, 0x44, 0x38, 0x2c]);
