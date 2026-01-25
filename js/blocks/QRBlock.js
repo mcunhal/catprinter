@@ -59,6 +59,14 @@ export class QRBlock extends BaseBlock {
         }
     }
 
+    onPreviewMode(active) {
+        if (active) {
+            this.inputContainer.style.display = 'none';
+        } else {
+            this.inputContainer.style.display = 'block';
+        }
+    }
+
     async renderCanvas() {
         const text = this.input.value;
         if (!text) return null;
