@@ -70,8 +70,37 @@ export class ImageBlock extends BaseBlock {
             this.updateSettings({ rotation: (current + 90) % 360 });
         };
 
+        // Invert Checkbox
+        const invertGroup = document.createElement('div');
+        invertGroup.className = 'setting-group';
+        const invertCb = document.createElement('input');
+        invertCb.type = 'checkbox';
+        invertCb.id = `inv-${this.id}`;
+        invertCb.onchange = (e) => this.updateSettings({ invert: e.target.checked });
+        const invertLabel = document.createElement('label');
+        invertLabel.htmlFor = invertCb.id;
+        invertLabel.innerText = 'Invert';
+        invertGroup.appendChild(invertCb);
+        invertGroup.appendChild(invertLabel);
+
+        // AutoScale Checkbox
+        const autoGroup = document.createElement('div');
+        autoGroup.className = 'setting-group';
+        const autoCb = document.createElement('input');
+        autoCb.type = 'checkbox';
+        autoCb.id = `auto-${this.id}`;
+        autoCb.checked = true;
+        autoCb.onchange = (e) => this.updateSettings({ autoscale: e.target.checked });
+        const autoLabel = document.createElement('label');
+        autoLabel.htmlFor = autoCb.id;
+        autoLabel.innerText = 'Fit';
+        autoGroup.appendChild(autoCb);
+        autoGroup.appendChild(autoLabel);
+
         this.settingsPanel.appendChild(ditherGroup);
         this.settingsPanel.appendChild(threshGroup);
+        this.settingsPanel.appendChild(invertGroup);
+        this.settingsPanel.appendChild(autoGroup);
         this.settingsPanel.appendChild(rotateBtn);
     }
 

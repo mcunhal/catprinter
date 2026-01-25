@@ -640,3 +640,13 @@ export async function printImage(canvas, options) {
   if (activeDriver) return activeDriver.printImage(canvas, options);
   throw new Error('Not connected');
 }
+
+export async function disconnectPrinter() {
+  if (activeDevice && activeDevice.gatt.connected) {
+    logger.info('Disconnecting printer...');
+    activeDevice.gatt.disconnect();
+    activeDevice = null;
+    activeDriver = null;
+    logger.success('Printer disconnected.');
+  }
+}

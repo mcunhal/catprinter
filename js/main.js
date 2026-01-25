@@ -1,5 +1,5 @@
-import { connectPrinter, isPrinterConnected, getBatteryLevel, getLastKnownBatteryLevel } from './printer.js';
-import { logger } from './logger.js';
+import { connectPrinter, disconnectPrinter, isPrinterConnected, getBatteryLevel, getLastKnownBatteryLevel } from './printer.js';
+import { logger, setupLoggerUI } from './logger.js';
 import { BlockManager } from './BlockManager.js';
 import { TextBlock } from './blocks/TextBlock.js';
 import { ImageBlock } from './blocks/ImageBlock.js';
@@ -25,12 +25,22 @@ const settingsPopover = document.getElementById('settingsPopover');
 
 const printDensityInput = document.getElementById('printDensity');
 const printDensityDisplay = document.getElementById('printDensityDisplay');
+const paddingVerticalInput = document.getElementById('paddingVertical');
+const paddingHorizontalInput = document.getElementById('paddingHorizontal');
 const clearLogBtn = document.getElementById('clearLogBtn');
+const showLogBtn = document.getElementById('showLogBtn');
+
+const logModal = document.getElementById('logModal');
+const logBackdrop = document.getElementById('logBackdrop');
+const closeLogBtn = document.getElementById('closeLogBtn');
+const logWrapper = document.getElementById('logWrapper');
+const printProgressBar = document.getElementById('printProgressBar');
 
 const batteryIndicator = document.getElementById('batteryIndicator');
 const batteryLevel = document.getElementById('batteryLevel');
 
 // === Initialization ===
+setupLoggerUI(logWrapper, printProgressBar);
 const manager = new BlockManager(blocksContainer);
 
 // === Event Listeners ===
@@ -79,16 +89,27 @@ function updateEmptyState() {
 
 // Printer Connection
 connectBtn.addEventListener('click', async () => {
+    if (isPrinterConnected()) {
+        await disconnectPrinter();
+        connectBtn.textContent = 'Connect';
+        connectBtn.classList.remove('btn-secondary');
+        connectBtn.classList.add('btn-primary');
+        printBtn.disabled = true;
+        batteryIndicator.style.display = 'none';
+        if (batteryCheckInterval) clearInterval(batteryCheckInterval);
+        return;
+    }
+
     try {
         connectBtn.disabled = true;
         connectBtn.textContent = 'Connecting...';
         
         await connectPrinter();
         
-        connectBtn.textContent = 'Connected';
+        connectBtn.textContent = 'Disconnect';
         connectBtn.classList.remove('btn-primary');
-        connectBtn.classList.add('btn-secondary'); // Visual indication of "done"
-        
+        connectBtn.classList.add('btn-secondary');
+
         printBtn.disabled = false;
         
         startBatteryCheck();
@@ -98,6 +119,9 @@ connectBtn.addEventListener('click', async () => {
         console.error(err);
         alert('Connection failed: ' + err.message);
         connectBtn.textContent = 'Connect';
+        connectBtn.classList.remove('btn-secondary');
+        connectBtn.classList.add('btn-primary');
+    } finally {
         connectBtn.disabled = false;
     }
 });
@@ -114,7 +138,17 @@ printBtn.addEventListener('click', async () => {
         printBtn.textContent = 'Printing...';
         
         const intensity = parseInt(printDensityInput.value);
-        await manager.printAll({ intensity });
+        const paddingVertical = parseInt(paddingVerticalInput.value) || 0;
+        const paddingHorizontal = parseInt(paddingHorizontalInput.value) || 0;
+
+        // Convert mm to pixels? Driver doesn't handle padding inside printImage usually.
+        // Wait, TextRenderer did. But manager loops blocks.
+        // We will pass these options to manager, and manager passes to blocks.
+        await manager.printAll({
+            intensity,
+            paddingVertical,
+            paddingHorizontal
+        });
         
     } catch (err) {
         console.error(err);
@@ -143,11 +177,24 @@ printDensityInput.addEventListener('input', (e) => {
     printDensityDisplay.textContent = e.target.value;
 });
 
-// Clear Log
+// Log UI
 clearLogBtn.addEventListener('click', () => {
-    logger.clear(); // Assuming logger has clear()
-    alert('Log cleared (console only)');
+    logger.clear();
 });
+
+showLogBtn.addEventListener('click', () => {
+    logModal.style.display = 'flex';
+    logBackdrop.style.display = 'block';
+    settingsPopover.classList.remove('active'); // Close settings
+});
+
+function closeLog() {
+    logModal.style.display = 'none';
+    logBackdrop.style.display = 'none';
+}
+
+closeLogBtn.addEventListener('click', closeLog);
+logBackdrop.addEventListener('click', closeLog);
 
 // Battery Logic
 function startBatteryCheck() {

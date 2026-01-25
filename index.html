@@ -7,6 +7,7 @@
     <meta name="description" content="Modern design studio for thermal printers. Create receipts, labels, and notes.">
     
     <link rel="stylesheet" href="css/modern.css">
+    <link rel="stylesheet" href="css/log-ui.css">
     
     <!-- Dependencies -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
@@ -25,7 +26,7 @@
             <button id="connectBtn" class="btn btn-primary">Connect</button>
             <button id="printBtn" class="btn btn-primary" disabled>Print</button>
         </div>
-        
+
         <!-- Settings Popover -->
         <div id="settingsPopover" class="settings-popover">
             <div class="settings-row">
@@ -35,9 +36,25 @@
                     <span id="printDensityDisplay" style="font-size: 0.8rem; width: 30px;">93</span>
                 </div>
             </div>
+            <div class="settings-row">
+                <label>Padding (mm)</label>
+                <div style="display: flex; gap: 8px;">
+                    <div style="flex: 1;">
+                         <label for="paddingVertical" style="font-size: 0.7rem; margin-bottom: 2px;">Vertical</label>
+                         <input type="number" id="paddingVertical" min="0" max="50" value="5">
+                    </div>
+                    <div style="flex: 1;">
+                         <label for="paddingHorizontal" style="font-size: 0.7rem; margin-bottom: 2px;">Horizontal</label>
+                         <input type="number" id="paddingHorizontal" min="0" max="50" value="2">
+                    </div>
+                </div>
+            </div>
              <div class="settings-row">
                 <label>Debug</label>
-                <button id="clearLogBtn" class="btn btn-secondary" style="width: 100%; font-size: 0.7rem;">Clear Log</button>
+                <div style="display: flex; gap: 8px;">
+                    <button id="showLogBtn" class="btn btn-secondary" style="flex: 1; font-size: 0.7rem;">Show Log</button>
+                    <button id="clearLogBtn" class="btn btn-secondary" style="flex: 1; font-size: 0.7rem;">Clear</button>
+                </div>
             </div>
             <div class="settings-row">
                 <label>About</label>
@@ -69,6 +86,21 @@
         <button id="addQRBtn" class="fab-btn" title="Add QR Code" aria-label="Add QR Code Block">
             <span style="display:block; font-size: 1.2rem;">🏁</span>
         </button>
+    </div>
+
+    <!-- Log Modal -->
+    <div id="logBackdrop" class="log-overlay-backdrop" style="display: none;"></div>
+    <div id="logModal" class="log-modal" style="display: none;">
+        <div class="log-modal-header">
+            <h2>Printer Log</h2>
+            <button id="closeLogBtn" class="btn-icon">×</button>
+        </div>
+        <div class="log-modal-body">
+            <div id="logWrapper" class="log-wrapper"></div>
+            <div class="progress-container" id="printProgress">
+                <div class="progress-bar" id="printProgressBar"></div>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="js/main.js"></script>
