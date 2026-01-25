@@ -183,6 +183,20 @@ function setupModeToggle() {
     imageModeBtn.addEventListener('click', () => {
         setActiveMode('image');
     });
+
+    // Add keyboard navigation
+    const handleKeydown = (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            const isText = currentMode === 'text';
+            // Toggle mode
+            setActiveMode(isText ? 'image' : 'text');
+            // Move focus
+            (isText ? imageModeBtn : textModeBtn).focus();
+        }
+    };
+
+    textModeBtn.addEventListener('keydown', handleKeydown);
+    imageModeBtn.addEventListener('keydown', handleKeydown);
     
     // Initialize with text mode active
     setActiveMode('text');
@@ -192,17 +206,22 @@ function setupModeToggle() {
 function setActiveMode(mode) {
     currentMode = mode;
     
+    const isText = mode === 'text';
+
     // Update button states
-    textModeBtn.classList.toggle('active', mode === 'text');
-    imageModeBtn.classList.toggle('active', mode === 'image');
+    textModeBtn.classList.toggle('active', isText);
+    imageModeBtn.classList.toggle('active', !isText);
+
+    // Update ARIA states & Tab Index
+    textModeBtn.setAttribute('aria-selected', isText);
+    textModeBtn.setAttribute('tabindex', isText ? '0' : '-1');
     
-    // Update ARIA states
-    textModeBtn.setAttribute('aria-selected', mode === 'text');
-    imageModeBtn.setAttribute('aria-selected', mode === 'image');
+    imageModeBtn.setAttribute('aria-selected', !isText);
+    imageModeBtn.setAttribute('tabindex', !isText ? '0' : '-1');
 
     // Update content visibility
-    textModeContent.classList.toggle('active', mode === 'text');
-    imageModeContent.classList.toggle('active', mode === 'image');
+    textModeContent.classList.toggle('active', isText);
+    imageModeContent.classList.toggle('active', !isText);
     
     // Update UI specific to the mode
     if (mode === 'text') {
