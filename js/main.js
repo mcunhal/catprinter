@@ -1,4 +1,4 @@
-import { connectPrinter, printImage, getBatteryLevel, isPrinterConnected, getLastKnownBatteryLevel } from './printer.js';
+import { connectPrinter, disconnectPrinter, setDisconnectCallback, printImage, getBatteryLevel, isPrinterConnected, getLastKnownBatteryLevel } from './printer.js';
 import { renderTextToCanvas } from './textRenderer.js';
 import { logger, setupLoggerUI } from './logger.js';
 import * as imageProcessor from './imageProcessor.js';
@@ -57,6 +57,7 @@ const printProgressBar = document.getElementById('printProgressBar');
 // === Data Store ===
 let currentMode = 'text'; // 'text' or 'image'
 let quill = null;
+let lastKnownRange = null;
 
 // === Battery Level Timer ===
 let batteryCheckIntervalId = null;
@@ -68,6 +69,14 @@ function init() {
     // Initialize logger UI
     initLoggerUI();
     
+    // Register disconnect callback
+    setDisconnectCallback(() => {
+        logger.warn('Printer disconnected');
+        updatePrintButtonState();
+        showPrintingStatus('Printer disconnected', 'error');
+        setTimeout(() => hidePrintingStatus(), 3000);
+    });
+
     // Initialize mode toggle
     setupModeToggle();
     
@@ -104,17 +113,15 @@ function init() {
             if (!quill) return;
             const size = parseInt(customFontSizeInput.value);
             if (size > 0) {
-                // Ensure editor has focus to get selection
-                quill.focus();
-                const range = quill.getSelection();
-                if (range) {
-                    if (range.length > 0) {
-                        quill.format('size', `${size}px`);
-                    } else {
-                        // Insert text with this size or set format for next typing
-                        quill.format('size', `${size}px`);
-                    }
+                // Restore selection if available, or just focus
+                if (lastKnownRange) {
+                    quill.setSelection(lastKnownRange.index, lastKnownRange.length);
+                } else {
+                    quill.focus();
                 }
+
+                // Now apply format
+                quill.format('size', `${size}px`);
             }
         });
     }
@@ -159,6 +166,13 @@ function initQuill() {
         // Debounce update
         if (window.previewTimeout) clearTimeout(window.previewTimeout);
         window.previewTimeout = setTimeout(updateTextPreview, 1000);
+    });
+
+    // Track selection for custom font size application
+    quill.on('selection-change', (range) => {
+        if (range) {
+            lastKnownRange = range;
+        }
     });
 }
 
@@ -576,7 +590,7 @@ function updatePrintButtonState() {
     }
     
     // Update connect buttons
-    const buttonText = connected ? 'Reconnect' : 'Connect Printer';
+    const buttonText = connected ? 'Disconnect' : 'Connect Printer';
     connectTextBtn.textContent = buttonText;
     connectImageBtn.textContent = buttonText;
     connectTextBtn.disabled = false;
@@ -591,6 +605,15 @@ function updatePrintButtonState() {
 }
 
 async function handleConnectPrinter() {
+    if (isPrinterConnected()) {
+        try {
+            await disconnectPrinter();
+        } catch (err) {
+            logger.error('Disconnect error', { message: err.message });
+        }
+        return;
+    }
+
     try {
         // Set loading state
         const loadingText = 'Connecting...';
@@ -698,6 +721,11 @@ function updateBatteryIndicator(level) {
 }
 
 // === Text Preview Management ===
+
+function schedulePreviewUpdate() {
+    if (window.previewTimeout) clearTimeout(window.previewTimeout);
+    window.previewTimeout = setTimeout(updateTextPreview, 500);
+}
 
 async function updateTextPreview() {
     try {

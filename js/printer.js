@@ -408,10 +408,13 @@ class StandardDriver {
       // 2b. Set Speed (0xBD)
       // NaitLee formula: speed = 4 * (Quality + 5). Default Quality 3 -> Speed 32.
       // Higher value = Slower speed = Darker print.
-      // We'll set a default of 33 (slightly slower/darker than default).
-      // We could optionally map options.intensity to speed too, but let's stick to Energy first.
-      const speedVal = 33;
-      logger.debug(`[Standard] Setting Speed to ${speedVal} (0x${speedVal.toString(16)})`);
+      // We map Intensity (0-255) to Speed (20-50).
+      // Int 0 -> Speed 20 (Fast/Light)
+      // Int 255 -> Speed 50 (Slow/Dark)
+      const intensity = options.intensity !== undefined ? options.intensity : 200;
+      const speedVal = Math.round(20 + (intensity / 255) * 30);
+
+      logger.debug(`[Standard] Setting Speed to ${speedVal} (0x${speedVal.toString(16)}) based on intensity ${intensity}`);
       await this.sendCommand(0xBD, Uint8Array.of(speedVal));
       await sleep(50);
 
@@ -419,12 +422,18 @@ class StandardDriver {
       // Map 0-255 intensity to 0-65535 energy.
       // Default NaitLee medium is 0x4000 (16384).
       // Intensity 100 -> 25600. Intensity 200 -> 51200.
-      const energyVal = (options.intensity || 200) * 256;
+      const energyVal = intensity * 256;
       const energyBytes = new Uint8Array([energyVal & 0xFF, (energyVal >> 8) & 0xFF]); // Little Endian
 
       logger.debug(`[Standard] Setting Energy to 0x${energyVal.toString(16)}`);
       await this.sendCommand(0xAF, energyBytes);
       await this.sendCommand(0xBE, Uint8Array.of(0x01)); // Apply
+      await sleep(50);
+
+      // 2d. Try Legacy Intensity (0xA2) just in case
+      // Some firmwares might respond to this instead/also
+      logger.debug(`[Standard] Sending Legacy Intensity (0xA2): ${intensity}`);
+      await this.sendCommand(0xA2, Uint8Array.of(intensity));
       await sleep(50);
 
       // 3. Start Lattice (0xA6)
@@ -469,6 +478,16 @@ class StandardDriver {
 // Global active driver
 let activeDriver = null;
 let activeDevice = null;
+let onDisconnectCallback = null;
+
+function onDisconnected() {
+  logger.warn('Printer disconnected');
+  activeDriver = null;
+  activeDevice = null;
+  if (onDisconnectCallback) {
+    onDisconnectCallback();
+  }
+}
 
 // Helper to determine driver type via handshake
 async function detectDriver(device, server, controlChar, notifyChar) {
@@ -597,6 +616,9 @@ export async function connectPrinter() {
         logger.info('Discovered Services:', services.map(s => s.uuid));
     } catch (e) { logger.warn('Service discovery debug dump failed', e); }
 
+    // Register disconnect listener ONLY after connection is stable-ish
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+
     let svc;
     try {
       svc = await server.getPrimaryService(MAIN_SERVICE_UUID);
@@ -616,6 +638,18 @@ export async function connectPrinter() {
     logger.error('Connection failed', err);
     throw err;
   }
+}
+
+export async function disconnectPrinter() {
+  if (activeDevice && activeDevice.gatt.connected) {
+    logger.info('Disconnecting printer...');
+    activeDevice.gatt.disconnect();
+    // onDisconnected will be triggered by the event listener
+  }
+}
+
+export function setDisconnectCallback(callback) {
+  onDisconnectCallback = callback;
 }
 
 export async function getBatteryLevel() {
