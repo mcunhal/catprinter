@@ -31,19 +31,11 @@ export class BaseBlock {
         const controls = document.createElement('div');
         controls.className = 'block-header-controls';
 
-        // Move Up
-        const upBtn = document.createElement('button');
-        upBtn.innerHTML = '↑';
-        upBtn.className = 'header-btn';
-        upBtn.ariaLabel = 'Move block up';
-        upBtn.onclick = () => this.manager.moveBlock(this.id, -1);
-
-        // Move Down
-        const downBtn = document.createElement('button');
-        downBtn.innerHTML = '↓';
-        downBtn.className = 'header-btn';
-        downBtn.ariaLabel = 'Move block down';
-        downBtn.onclick = () => this.manager.moveBlock(this.id, 1);
+        // Drag Handle
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'drag-handle';
+        dragHandle.innerHTML = '⋮⋮';
+        dragHandle.ariaLabel = 'Drag to reorder';
 
         // Delete
         const delBtn = document.createElement('button');
@@ -52,8 +44,7 @@ export class BaseBlock {
         delBtn.ariaLabel = 'Delete block';
         delBtn.onclick = () => this.manager.removeBlock(this.id);
 
-        controls.appendChild(upBtn);
-        controls.appendChild(downBtn);
+        controls.appendChild(dragHandle);
         controls.appendChild(delBtn);
 
         this.header.appendChild(title);

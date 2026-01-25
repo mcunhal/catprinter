@@ -19,6 +19,7 @@ const addQRBtn = document.getElementById('addQRBtn');
 
 const connectBtn = document.getElementById('connectBtn');
 const printBtn = document.getElementById('printBtn');
+const previewBtn = document.getElementById('previewBtn');
 
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsPopover = document.getElementById('settingsPopover');
@@ -172,6 +173,22 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// Preview Toggle
+previewBtn.addEventListener('click', () => {
+    document.body.classList.toggle('preview-mode');
+    previewBtn.classList.toggle('btn-primary'); // Highlight state
+
+    // Optional: Hide/Show Add Block Controls
+    const addControls = document.getElementById('addBlockControls');
+    if (document.body.classList.contains('preview-mode')) {
+        addControls.style.display = 'none';
+        previewBtn.innerHTML = '📝'; // Edit icon
+    } else {
+        addControls.style.display = 'flex';
+        previewBtn.innerHTML = '👁️'; // Eye icon
+    }
+});
+
 // Density Input
 printDensityInput.addEventListener('input', (e) => {
     printDensityDisplay.textContent = e.target.value;
@@ -183,18 +200,15 @@ clearLogBtn.addEventListener('click', () => {
 });
 
 showLogBtn.addEventListener('click', () => {
-    logDrawer.classList.add('open');
-    logBackdrop.classList.add('open');
+    logDrawer.classList.toggle('open');
     settingsPopover.classList.remove('active'); // Close settings
 });
 
 function closeLog() {
     logDrawer.classList.remove('open');
-    logBackdrop.classList.remove('open');
 }
 
 closeLogBtn.addEventListener('click', closeLog);
-logBackdrop.addEventListener('click', closeLog);
 
 // Battery Logic
 function startBatteryCheck() {

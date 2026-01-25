@@ -6,6 +6,37 @@ export class BlockManager {
         if (!containerElement) throw new Error('BlockManager requires a container element');
         this.container = containerElement;
         this.blocks = [];
+        this._initSortable();
+    }
+
+    _initSortable() {
+        if (typeof Sortable !== 'undefined') {
+            this.sortable = new Sortable(this.container, {
+                animation: 150,
+                handle: '.drag-handle',
+                onEnd: (evt) => {
+                    this._syncOrder();
+                }
+            });
+        } else {
+            logger.warn('SortableJS not found. Drag and drop disabled.');
+        }
+    }
+
+    _syncOrder() {
+        // Reorder blocks array to match DOM
+        const newBlocks = [];
+        const domElements = Array.from(this.container.children);
+
+        domElements.forEach(el => {
+            const id = el.dataset.id;
+            const block = this.blocks.find(b => b.id === id);
+            if (block) {
+                newBlocks.push(block);
+            }
+        });
+
+        this.blocks = newBlocks;
     }
 
     addBlock(block) {
@@ -17,7 +48,11 @@ export class BlockManager {
     }
 
     removeBlock(id) {
-        if (confirm('Delete this block?')) {
+        // Check for "Don't ask again" setting
+        const confirmDelete = document.getElementById('confirmDeleteOption');
+        const shouldConfirm = confirmDelete ? confirmDelete.checked : true;
+
+        if (!shouldConfirm || confirm('Delete this block?')) {
             const index = this.blocks.findIndex(b => b.id === id);
             if (index !== -1) {
                 const block = this.blocks[index];
@@ -25,27 +60,6 @@ export class BlockManager {
                 this.blocks.splice(index, 1);
             }
         }
-    }
-
-    moveBlock(id, direction) {
-        const index = this.blocks.findIndex(b => b.id === id);
-        if (index === -1) return;
-
-        const newIndex = index + direction;
-        if (newIndex < 0 || newIndex >= this.blocks.length) return;
-
-        // Move in array
-        const block = this.blocks[index];
-        this.blocks.splice(index, 1);
-        this.blocks.splice(newIndex, 0, block);
-
-        // Re-order DOM
-        this._reorderDOM();
-    }
-
-    _reorderDOM() {
-        // Appending an existing child moves it
-        this.blocks.forEach(b => this.container.appendChild(b.container));
     }
 
     getBlockCount() {
