@@ -52,6 +52,7 @@ const imageSummary = document.getElementById('imageSummary');
 // Logger UI elements
 const logWrapper = document.getElementById('logWrapper');
 const clearLogBtn = document.getElementById('clearLogBtn');
+const copyLogBtn = document.getElementById('copyLogBtn');
 const printProgressBar = document.getElementById('printProgressBar');
 
 // === Data Store ===
@@ -172,6 +173,28 @@ function initLoggerUI() {
         logger.clear();
         logger.info('Log cleared');
     });
+
+    // Add copy log button event listener
+    if (copyLogBtn) {
+        copyLogBtn.addEventListener('click', () => {
+            const logs = logger.getLogs();
+            const text = logs.map(entry => {
+                const time = entry.timestamp.toTimeString().split(' ')[0];
+                const data = entry.data ? JSON.stringify(entry.data) : '';
+                return `[${time}] ${entry.level.toUpperCase()}: ${entry.message} ${data}`;
+            }).join('\n');
+
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = copyLogBtn.textContent;
+                copyLogBtn.textContent = 'Copied!';
+                setTimeout(() => {
+                    copyLogBtn.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                logger.error('Failed to copy logs', { error: err.message });
+            });
+        });
+    }
 }
 
 // Setup mode toggle functionality
