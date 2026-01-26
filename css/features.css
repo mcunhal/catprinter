@@ -39,14 +39,10 @@
 .preview-mode .block-header {
     background: transparent;
     border: none;
-    padding: 2px 8px;
     opacity: 0; /* Hidden by default */
     transition: opacity 0.2s;
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 100%;
     pointer-events: none; /* Let clicks pass through when hidden */
+    /* Maintain positioning from modern.css (left gutter) */
 }
 
 .preview-mode .block-wrapper:hover .block-header {

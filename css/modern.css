@@ -455,7 +455,7 @@ main {
     border-radius: 8px;
     width: 250px;
     display: none;
-    z-index: 100;
+    z-index: 300; /* Above Log Drawer (200) */
 }
 .settings-popover.active {
     display: block;

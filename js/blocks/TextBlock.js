@@ -43,6 +43,56 @@ export class TextBlock extends BaseBlock {
         });
 
         // UX: Auto-focus if it's a new block? Maybe.
+
+        // Add Custom Font Size Input
+        this._addCustomFontSizeInput();
+    }
+
+    _addCustomFontSizeInput() {
+        const toolbar = this.quill.getModule('toolbar');
+        const sizePicker = toolbar.container.querySelector('.ql-size');
+
+        if (sizePicker) {
+            // Create Input
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'ql-custom-size';
+            input.placeholder = 'px';
+            input.min = 8;
+            input.max = 200;
+            input.title = 'Custom Font Size';
+
+            // Style it to fit in toolbar
+            input.style.width = '40px';
+            input.style.marginLeft = '4px';
+            input.style.padding = '2px';
+            input.style.border = '1px solid #ccc';
+            input.style.borderRadius = '3px';
+            input.style.fontSize = '12px';
+
+            // Handle Change
+            input.addEventListener('change', (e) => {
+                const val = parseInt(e.target.value);
+                if (val > 0) {
+                    this.quill.format('size', `${val}px`);
+                }
+            });
+
+            // Handle Selection Change to update input
+            this.quill.on('selection-change', (range) => {
+                if (range) {
+                    const format = this.quill.getFormat(range);
+                    if (format.size && format.size.endsWith('px')) {
+                        input.value = parseInt(format.size);
+                    } else {
+                        input.value = '';
+                    }
+                }
+            });
+
+            // Insert after the picker
+            sizePicker.parentNode.insertBefore(input, sizePicker.nextSibling);
+        }
     }
 
     onPreviewMode(active) {
