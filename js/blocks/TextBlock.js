@@ -104,12 +104,30 @@ export class TextBlock extends BaseBlock {
         }
     }
 
-    async renderCanvas() {
+    async renderCanvas(options = {}) {
         // Use the existing renderer
         // We need to pass the editor element. Quill creates a .ql-editor div inside our container.
+
+        // Convert global mm padding to pixels?
+        // Note: main.js passes raw values from input.
+        // We assume main.js handles mm->px or passes raw numbers.
+        // Checking main.js:
+        // const paddingVertical = parseInt(paddingVerticalInput.value) || 0;
+        // So they are integer values (likely mm from the label).
+        // renderTextToCanvas expects pixels?
+        // Looking at js/textRenderer.js:
+        // const result = await renderTextToCanvas(editorElement, { paddingVertical: paddingVerticalPx ... });
+        // The OLD main.js did `Math.round(paddingVerticalMm * 8)`.
+        // The NEW main.js (v4/5) just passes `parseInt`.
+        // FIX: We should probably convert to pixels here if they are passed as integers.
+        // Assuming 8 dots/mm (203dpi) is the standard for these printers.
+
+        const paddingVertical = (options.paddingVertical || 0) * 8;
+        const paddingHorizontal = (options.paddingHorizontal || 0) * 8;
+
         const result = await renderTextToCanvas(this.editorContainer, {
-            paddingVertical: 0, // Blocks have their own padding usually, but renderer handles it inside canvas
-            paddingHorizontal: 0
+            paddingVertical: paddingVertical,
+            paddingHorizontal: paddingHorizontal
         });
         return result.canvas || result;
     }

@@ -89,7 +89,8 @@ export class BlockManager {
                 // Visual feedback: highlight printing block
                 block.container.classList.add('printing-active');
 
-                const canvas = await block.renderCanvas();
+                // Pass options (padding, etc) to renderCanvas
+                const canvas = await block.renderCanvas(options);
                 if (canvas) {
                      logger.info(`Printing block ${i}/${this.blocks.length} (${block.type})`);
                      await printImage(canvas, options);

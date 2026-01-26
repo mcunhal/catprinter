@@ -174,7 +174,74 @@ export class ImageBlock extends BaseBlock {
         }
     }
 
-    async renderCanvas() {
-        return this.processor.processImage();
+    async renderCanvas(options = {}) {
+        // Calculate effective width and padding
+        const paddingVertical = (options.paddingVertical || 0) * 8; // mm to px
+        const paddingHorizontal = (options.paddingHorizontal || 0) * 8;
+
+        // Effective width is printer width minus horizontal padding
+        // 384 is PRINTER_WIDTH constant
+        const effectiveWidth = 384 - (paddingHorizontal * 2);
+
+        // Save current settings
+        const originalSettings = this.processor.getSettings();
+
+        // Update processor settings temporarily
+        // We override width.
+        // We also want to ensure the processor uses the vertical padding
+        // ImageProcessor has 'padding' setting which adds spacing around.
+        // However, ImageProcessor calculates canvas size based on width and padding.
+        // If we set width=effectiveWidth, and padding=paddingVertical,
+        // it will draw a canvas of width `effectiveWidth`?
+        // Wait, ImageProcessor:
+        // if (isRotated...) canvas.width = destWidth; canvas.height = destHeight + (padding * 2);
+        // If destWidth is effectiveWidth, the canvas will be narrower than 384.
+        // The Printer Driver expects 384 width usually?
+        // printImage in printer.js:
+        // `if (width !== PRINTER_WIDTH) { throw ... }` inside processImageTo1bpp.
+        // BUT processImageTo1bpp is for RAW canvas.
+        // BlockManager passes canvas to `printImage`.
+        // `printImage` calls `processImageTo1bpp`.
+        // So the canvas MUST be 384px wide.
+
+        // If ImageProcessor produces a narrower canvas, printImage will FAIL.
+        // FIX: ImageProcessor should produce 384px canvas, but content should be constrained.
+
+        // ImageProcessor logic (from memory/read):
+        // `destWidth = settings.width`
+        // `canvas.width = destWidth` (if not rotated).
+
+        // So we can't just change width to effectiveWidth if ImageProcessor doesn't support a "canvas width" vs "content width".
+        // Let's wrap the result.
+
+        // 1. Generate the image content with constrained width.
+        this.processor.updateSettings({
+            width: effectiveWidth,
+            // We don't use processor padding here, we'll wrap it ourselves to ensure 384 width
+            padding: 0
+        });
+
+        const contentCanvas = this.processor.processImage();
+
+        // Restore settings
+        this.processor.updateSettings(originalSettings);
+
+        if (!contentCanvas) return null;
+
+        // 2. Create a final 384px canvas with padding
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = 384;
+        finalCanvas.height = contentCanvas.height + (paddingVertical * 2);
+
+        const ctx = finalCanvas.getContext('2d');
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+        // Draw centered (or using horizontal padding)
+        // x = paddingHorizontal
+        // y = paddingVertical
+        ctx.drawImage(contentCanvas, paddingHorizontal, paddingVertical);
+
+        return finalCanvas;
     }
 }
