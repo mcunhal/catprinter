@@ -832,6 +832,8 @@ function showPrintingStatus(message, type = 'info') {
     if (!statusBar) {
         statusBar = document.createElement('div');
         statusBar.className = 'printing-status';
+        statusBar.setAttribute('role', 'status');
+        statusBar.setAttribute('aria-live', 'polite');
         document.body.appendChild(statusBar);
     }
     
