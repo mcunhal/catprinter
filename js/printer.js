@@ -409,8 +409,7 @@ class StandardDriver {
       // NaitLee formula: speed = 4 * (Quality + 5). Default Quality 3 -> Speed 32.
       // Higher value = Slower speed = Darker print.
       // We'll set a default of 33 (slightly slower/darker than default).
-      // We could optionally map options.intensity to speed too, but let's stick to Energy first.
-      const speedVal = 33;
+      const speedVal = options.speed !== undefined ? options.speed : 33;
       logger.debug(`[Standard] Setting Speed to ${speedVal} (0x${speedVal.toString(16)})`);
       await this.sendCommand(0xBD, Uint8Array.of(speedVal));
       await sleep(50);
@@ -454,6 +453,10 @@ class StandardDriver {
       // 6. Feed Paper (0xA1) -> Payload: 0x80 0x00 (128 pixels)
       logger.debug('[Standard] Feeding Paper');
       await this.sendCommand(0xA1, new Uint8Array([0x80, 0x00]));
+
+      // Post-print delay to prevent overlapping jobs/buffer overflow
+      // This ensures the printer finishes mechanically before the next block starts.
+      await sleep(3000);
 
       const printTime = (Date.now() - startTime) / 1000;
       logger.success('Print completed (Standard)', { executionTime: printTime.toFixed(1) + 's' });
