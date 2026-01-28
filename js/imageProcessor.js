@@ -2,202 +2,203 @@
 import { logger } from './logger.js';
 import { PRINTER_WIDTH } from './printer.js';
 
-// Image processing settings
-let currentImage = null;
-let imageProcessingSettings = {
-    ditherMethod: 'floydSteinberg',
-    threshold: 128,
-    invert: false,
-    width: PRINTER_WIDTH,
-    autoscale: true,
-    padding: 10,
-    rotation: 0 // Rotation in degrees (0, 90, 180, 270)
-};
-
-// Cache for processed images to avoid re-processing when only preview needs updating
-let processedImageCache = null;
-
-// Load and prepare an image from a file or URL
-export async function loadImage(fileOrUrl) {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        
-        img.onload = () => {
-            logger.info(`Image loaded: ${img.width}x${img.height}px`);
-            currentImage = img;
-            processedImageCache = null;
-            resolve(img);
+export class ImageProcessor {
+    constructor() {
+        this.currentImage = null;
+        this.cache = null;
+        this.settings = {
+            ditherMethod: 'floydSteinberg',
+            threshold: 128,
+            invert: false,
+            width: PRINTER_WIDTH,
+            autoscale: true,
+            padding: 10,
+            rotation: 0 // Rotation in degrees (0, 90, 180, 270)
         };
+    }
+
+    async loadImage(fileOrUrl) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+
+            img.onload = () => {
+                // logger.info(`Image loaded: ${img.width}x${img.height}px`); // Too noisy for multiple blocks
+                this.currentImage = img;
+                this.cache = null;
+                resolve(img);
+            };
+
+            img.onerror = (err) => {
+                logger.error('Failed to load image', { error: err.message });
+                reject(new Error('Failed to load image'));
+            };
+
+            if (typeof fileOrUrl === 'string') {
+                img.src = fileOrUrl;
+            } else if (fileOrUrl instanceof File) {
+                const reader = new FileReader();
+                reader.onload = (e) => { img.src = e.target.result; };
+                reader.onerror = (e) => { reject(new Error('Failed to read file')); };
+                reader.readAsDataURL(fileOrUrl);
+            } else {
+                reject(new Error('Invalid input: expected File or URL string'));
+            }
+        });
+    }
+
+    updateSettings(newSettings) {
+        const oldSettings = {...this.settings};
+        this.settings = {...this.settings, ...newSettings};
         
-        img.onerror = (err) => {
-            logger.error('Failed to load image', { error: err.message });
-            reject(new Error('Failed to load image'));
-        };
+        const processingChanged =
+            oldSettings.ditherMethod !== this.settings.ditherMethod ||
+            oldSettings.threshold !== this.settings.threshold ||
+            oldSettings.invert !== this.settings.invert ||
+            oldSettings.rotation !== this.settings.rotation ||
+            oldSettings.width !== this.settings.width ||
+            oldSettings.autoscale !== this.settings.autoscale ||
+            oldSettings.padding !== this.settings.padding;
         
-        if (typeof fileOrUrl === 'string') {
-            // Load from URL
-            img.src = fileOrUrl;
-        } else if (fileOrUrl instanceof File) {
-            // Load from File object
-            const reader = new FileReader();
-            reader.onload = (e) => { img.src = e.target.result; };
-            reader.onerror = (e) => { reject(new Error('Failed to read file')); };
-            reader.readAsDataURL(fileOrUrl);
-        } else {
-            reject(new Error('Invalid input: expected File or URL string'));
+        if (processingChanged) {
+            this.cache = null;
         }
-    });
-}
 
-// Update processing settings
-export function updateSettings(settings) {
-    const oldSettings = {...imageProcessingSettings};
-    imageProcessingSettings = {...imageProcessingSettings, ...settings};
-    
-    // Check if any settings that affect the processing have changed
-    const processingChanged = 
-        oldSettings.ditherMethod !== imageProcessingSettings.ditherMethod ||
-        oldSettings.threshold !== imageProcessingSettings.threshold ||
-        oldSettings.invert !== imageProcessingSettings.invert ||
-        oldSettings.rotation !== imageProcessingSettings.rotation;
-    
-    if (processingChanged) {
-        processedImageCache = null;
+        return this.settings;
     }
-    
-    logger.debug('Image processing settings updated', imageProcessingSettings);
-    return imageProcessingSettings;
-}
 
-// Get current processing settings
-export function getSettings() {
-    return {...imageProcessingSettings};
-}
+    getSettings() {
+        return {...this.settings};
+    }
 
-// Process the image with current settings and return a canvas
-export function processImage() {
-    if (!currentImage) {
-        logger.warn('No image loaded for processing');
-        return null;
-    }
-    
-    if (processedImageCache) {
-        logger.debug('Using cached processed image');
-        return processedImageCache;
-    }
-    
-    logger.info('Processing image', imageProcessingSettings);
-    
-    // Create output canvas
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Calculate dimensions
-    let destWidth = imageProcessingSettings.width;
-    let destHeight;
-    
-    // Adjust dimensions based on rotation
-    const rotation = imageProcessingSettings.rotation;
-    const isRotated90or270 = (rotation === 90 || rotation === 270);
-    
-    if (imageProcessingSettings.autoscale) {
-        // Scale maintaining aspect ratio, taking rotation into account
-        const aspectRatio = isRotated90or270 ? 
-            (currentImage.width / currentImage.height) : 
-            (currentImage.height / currentImage.width);
-        destHeight = Math.round(destWidth * aspectRatio);
-    } else {
-        // Use original dimensions but cap at printer width
-        destWidth = Math.min(currentImage.width, PRINTER_WIDTH);
-        destHeight = currentImage.height;
+    processImage() {
+        if (!this.currentImage) {
+            return null;
+        }
         
-        // Swap dimensions if rotated by 90 or 270 degrees
-        if (isRotated90or270) {
-            [destWidth, destHeight] = [destHeight, destWidth];
-            // Ensure we don't exceed printer width
-            if (destWidth > PRINTER_WIDTH) {
-                const scale = PRINTER_WIDTH / destWidth;
-                destWidth = PRINTER_WIDTH;
-                destHeight = Math.round(destHeight * scale);
+        if (this.cache) {
+            return this.cache;
+        }
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let destWidth = this.settings.width;
+        let destHeight;
+
+        const rotation = this.settings.rotation;
+        const isRotated90or270 = (rotation === 90 || rotation === 270);
+
+        if (this.settings.autoscale) {
+            const aspectRatio = isRotated90or270 ?
+                (this.currentImage.width / this.currentImage.height) :
+                (this.currentImage.height / this.currentImage.width);
+            destHeight = Math.round(destWidth * aspectRatio);
+        } else {
+            destWidth = Math.min(this.currentImage.width, PRINTER_WIDTH);
+            destHeight = this.currentImage.height;
+
+            if (isRotated90or270) {
+                [destWidth, destHeight] = [destHeight, destWidth];
+                if (destWidth > PRINTER_WIDTH) {
+                    const scale = PRINTER_WIDTH / destWidth;
+                    destWidth = PRINTER_WIDTH;
+                    destHeight = Math.round(destHeight * scale);
+                }
             }
         }
+
+        const padding = this.settings.padding;
+
+        if (isRotated90or270) {
+            canvas.width = destWidth;
+            canvas.height = destHeight + (padding * 2);
+        } else {
+            canvas.width = destWidth;
+            canvas.height = destHeight + (padding * 2);
+        }
+
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(destWidth / 2, padding + destHeight / 2);
+        ctx.rotate((rotation * Math.PI) / 180);
+
+        if (isRotated90or270) {
+            ctx.drawImage(
+                this.currentImage,
+                0, 0, this.currentImage.width, this.currentImage.height,
+                -destHeight / 2, -destWidth / 2, destHeight, destWidth
+            );
+        } else {
+            ctx.drawImage(
+                this.currentImage,
+                0, 0, this.currentImage.width, this.currentImage.height,
+                -destWidth / 2, -destHeight / 2, destWidth, destHeight
+            );
+        }
+        ctx.restore();
+
+        applyImageProcessing(canvas, this.settings);
+
+        this.cache = canvas;
+        return canvas;
     }
-    
-    // Add padding
-    const padding = imageProcessingSettings.padding;
-    
-    // Set canvas dimensions based on rotation
-    if (isRotated90or270) {
-        canvas.width = destWidth;
-        canvas.height = destHeight + (padding * 2);
-    } else {
-        canvas.width = destWidth;
-        canvas.height = destHeight + (padding * 2);
+
+    getImageSummary() {
+        if (!this.currentImage) return null;
+
+        const canvas = this.processImage();
+        if (!canvas) return null;
+
+        return {
+            originalWidth: this.currentImage.width,
+            originalHeight: this.currentImage.height,
+            processedWidth: canvas.width,
+            processedHeight: canvas.height,
+            aspectRatio: (this.currentImage.width / this.currentImage.height).toFixed(2),
+            ditherMethod: this.settings.ditherMethod,
+            threshold: this.settings.threshold,
+            invert: this.settings.invert,
+            rotation: this.settings.rotation
+        };
     }
-    
-    // Draw with padding
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Apply rotation transformation
-    ctx.save();
-    
-    // Move to the center of the image area
-    ctx.translate(destWidth / 2, padding + destHeight / 2);
-    
-    // Rotate by the specified angle
-    ctx.rotate((rotation * Math.PI) / 180);
-    
-    // Draw image centered, taking into account rotation
-    if (isRotated90or270) {
-        ctx.drawImage(
-            currentImage,
-            0, 0, currentImage.width, currentImage.height,
-            -destHeight / 2, -destWidth / 2, destHeight, destWidth
-        );
-    } else {
-        ctx.drawImage(
-            currentImage,
-            0, 0, currentImage.width, currentImage.height,
-            -destWidth / 2, -destHeight / 2, destWidth, destHeight
-        );
+
+    resetSettings() {
+        this.settings = {
+            ditherMethod: 'floydSteinberg',
+            threshold: 128,
+            invert: false,
+            width: PRINTER_WIDTH,
+            autoscale: true,
+            padding: 10,
+            rotation: 0
+        };
+        this.cache = null;
+        return {...this.settings};
     }
-    
-    // Restore the context
-    ctx.restore();
-    
-    // Apply image processing
-    applyImageProcessing(canvas, imageProcessingSettings);
-    
-    // Cache for reuse
-    processedImageCache = canvas;
-    
-    logger.info('Image processed', {
-        width: canvas.width,
-        height: canvas.height,
-        method: imageProcessingSettings.ditherMethod,
-        rotation: imageProcessingSettings.rotation
-    });
-    
-    return canvas;
+
+    clearImage() {
+        this.currentImage = null;
+        this.cache = null;
+    }
 }
 
-// Apply image processing effects to canvas
+// === Helper Functions (Private to Module) ===
+
 function applyImageProcessing(canvas, settings) {
     const ctx = canvas.getContext('2d');
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
     
-    // Convert to grayscale first
+    // Grayscale
     for (let i = 0; i < data.length; i += 4) {
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
         
-        // Luminance formula
         let luminance = 0.299 * r + 0.587 * g + 0.114 * b;
         
-        // Apply inversion if needed
         if (settings.invert) {
             luminance = 255 - luminance;
         }
@@ -205,7 +206,7 @@ function applyImageProcessing(canvas, settings) {
         data[i] = data[i + 1] = data[i + 2] = luminance;
     }
     
-    // Apply dithering or thresholding
+    // Dithering
     switch (settings.ditherMethod) {
         case 'threshold':
             applyThreshold(imageData, settings.threshold);
@@ -220,7 +221,6 @@ function applyImageProcessing(canvas, settings) {
             applyHalftone(imageData, settings.threshold);
             break;
         case 'none':
-            // Just use the grayscale
             break;
         default:
             applyThreshold(imageData, settings.threshold);
@@ -229,7 +229,6 @@ function applyImageProcessing(canvas, settings) {
     ctx.putImageData(imageData, 0, 0);
 }
 
-// Simple threshold
 function applyThreshold(imageData, threshold) {
     const data = imageData.data;
     for (let i = 0; i < data.length; i += 4) {
@@ -238,14 +237,12 @@ function applyThreshold(imageData, threshold) {
     }
 }
 
-// Floyd-Steinberg dithering
 function applyFloydSteinberg(imageData, threshold) {
     const width = imageData.width;
     const height = imageData.height;
     const data = imageData.data;
     const luminance = new Float32Array(width * height);
     
-    // Extract luminance
     for (let i = 0; i < height; i++) {
         for (let j = 0; j < width; j++) {
             const idx = (i * width + j) * 4;
@@ -253,7 +250,6 @@ function applyFloydSteinberg(imageData, threshold) {
         }
     }
     
-    // Apply Floyd-Steinberg dithering
     for (let i = 0; i < height; i++) {
         for (let j = 0; j < width; j++) {
             const idx = i * width + j;
@@ -278,7 +274,6 @@ function applyFloydSteinberg(imageData, threshold) {
         }
     }
     
-    // Apply result back to image data
     for (let i = 0; i < height; i++) {
         for (let j = 0; j < width; j++) {
             const idx = (i * width + j) * 4;
@@ -288,14 +283,12 @@ function applyFloydSteinberg(imageData, threshold) {
     }
 }
 
-// Atkinson dithering
 function applyAtkinson(imageData, threshold) {
     const width = imageData.width;
     const height = imageData.height;
     const data = imageData.data;
     const luminance = new Array(width * height);
     
-    // Extract luminance
     for (let i = 0; i < height; i++) {
         for (let j = 0; j < width; j++) {
             const idx = (i * width + j) * 4;
@@ -303,7 +296,6 @@ function applyAtkinson(imageData, threshold) {
         }
     }
     
-    // Apply Atkinson dithering
     for (let i = 0; i < height; i++) {
         for (let j = 0; j < width; j++) {
             const idx = i * width + j;
@@ -328,7 +320,6 @@ function applyAtkinson(imageData, threshold) {
         }
     }
     
-    // Apply result back to image data
     for (let i = 0; i < height; i++) {
         for (let j = 0; j < width; j++) {
             const idx = (i * width + j) * 4;
@@ -338,12 +329,10 @@ function applyAtkinson(imageData, threshold) {
     }
 }
 
-// Halftone dithering using a 4x4 Bayer matrix
 function applyHalftone(imageData, threshold) {
     const width = imageData.width;
     const data = imageData.data;
     
-    // 4x4 Bayer matrix
     const bayerMatrix = [
         [0, 8, 2, 10],
         [12, 4, 14, 6],
@@ -351,7 +340,6 @@ function applyHalftone(imageData, threshold) {
         [15, 7, 13, 5]
     ];
     
-    // Normalize matrix (0-255)
     for (let i = 0; i < 4; i++) {
         for (let j = 0; j < 4; j++) {
             bayerMatrix[i][j] = Math.floor(bayerMatrix[i][j] * 255 / 16);
@@ -364,50 +352,8 @@ function applyHalftone(imageData, threshold) {
             const i = y % 4;
             const j = x % 4;
             
-            // Apply threshold with Bayer matrix
-            const threshold = bayerMatrix[i][j];
-            data[idx] = data[idx + 1] = data[idx + 2] = (data[idx] < threshold) ? 0 : 255;
+            const thresh = bayerMatrix[i][j];
+            data[idx] = data[idx + 1] = data[idx + 2] = (data[idx] < thresh) ? 0 : 255;
         }
     }
-}
-
-// Generate image summary information
-export function getImageSummary() {
-    if (!currentImage) return null;
-    
-    const canvas = processImage();
-    if (!canvas) return null;
-    
-    return {
-        originalWidth: currentImage.width,
-        originalHeight: currentImage.height,
-        processedWidth: canvas.width,
-        processedHeight: canvas.height,
-        aspectRatio: (currentImage.width / currentImage.height).toFixed(2),
-        ditherMethod: imageProcessingSettings.ditherMethod,
-        threshold: imageProcessingSettings.threshold,
-        invert: imageProcessingSettings.invert,
-        rotation: imageProcessingSettings.rotation
-    };
-}
-
-// Reset to default settings
-export function resetSettings() {
-    imageProcessingSettings = {
-        ditherMethod: 'floydSteinberg',
-        threshold: 128,
-        invert: false,
-        width: PRINTER_WIDTH,
-        autoscale: true,
-        padding: 10,
-        rotation: 0
-    };
-    processedImageCache = null;
-    return {...imageProcessingSettings};
-}
-
-// Clear loaded image
-export function clearImage() {
-    currentImage = null;
-    processedImageCache = null;
 }

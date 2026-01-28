@@ -1,0 +1,103 @@
+
+/* Drag Handle */
+.drag-handle {
+    cursor: grab;
+    padding: 0 8px;
+    color: var(--color-text-light);
+    font-size: 1.2rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Sortable Ghost */
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: #f1f5f9;
+    border: 2px dashed var(--color-accent);
+}
+
+/* Preview Mode */
+.preview-mode #paper-roll {
+    border: none;
+    box-shadow: none;
+    background-color: white; /* Ensure white background for content */
+}
+
+.preview-mode .block-wrapper {
+    border-color: transparent !important;
+    background-color: transparent !important;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+}
+
+.preview-mode .block-header {
+    background: transparent;
+    border: none;
+    opacity: 0; /* Hidden by default */
+    transition: opacity 0.2s;
+    pointer-events: none; /* Let clicks pass through when hidden */
+    /* Maintain positioning from modern.css (left gutter) */
+}
+
+.preview-mode .block-wrapper:hover .block-header {
+    opacity: 1;
+    pointer-events: auto;
+    background: rgba(255, 255, 255, 0.9); /* Subtle backing on hover */
+}
+
+/* Hide specific controls in preview */
+.preview-mode .ql-toolbar {
+    display: none;
+}
+
+.preview-mode .image-settings-panel,
+.preview-mode .image-drop-zone {
+    display: none;
+}
+
+.preview-mode .block-title {
+    display: none; /* Minimal header */
+}
+
+/* Ensure content looks continuous */
+.preview-mode .block-content {
+    margin: 0;
+}
+
+/* Image Settings Toggle */
+.btn-settings-toggle {
+    margin: 8px auto 0;
+    display: block;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    color: var(--color-text-light);
+    cursor: pointer;
+}
+
+.btn-settings-toggle:hover {
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+.preview-mode .btn-settings-toggle {
+    display: none !important;
+}
+
+/* Read-Only Text in Preview */
+.preview-mode .ql-disabled {
+    background-color: transparent !important;
+    opacity: 1 !important;
+}
+
+.preview-mode .ql-editor {
+    padding-top: 0; /* Tighten up spacing in preview */
+}

@@ -1,3 +1,5 @@
-## 2024-05-22 - ARIA Tab Interface & Keyboard Navigation
-**Learning:** implementing `role="tab"` with manual `tabindex` management (0/-1) requires implementing full arrow-key navigation logic. Without it, keyboard users get stuck on the active tab.
-**Action:** For simple "tab-like" toggles where full ARIA complexity is overkill, keep `tabindex` natural (or 0) for all tabs so users can Tab through them, or ensure full keyboard event handling is implemented.
+# Palette's Journal
+
+## 2024-10-24 - Initial Observation
+**Learning:** The current application uses a modal-based approach (Text vs Image tabs) which limits creativity by preventing mixed-media layouts.
+**Action:** Re-architecting into a "Block" system (vertical stack) allows for a more natural "receipt" or "scrapbook" mental model, better matching the physical output of a thermal printer.
