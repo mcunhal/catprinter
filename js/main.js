@@ -26,6 +26,8 @@ const settingsPopover = document.getElementById('settingsPopover');
 
 const printDensityInput = document.getElementById('printDensity');
 const printDensityDisplay = document.getElementById('printDensityDisplay');
+const printSpeedInput = document.getElementById('printSpeed');
+const printSpeedDisplay = document.getElementById('printSpeedDisplay');
 const paddingVerticalInput = document.getElementById('paddingVertical');
 const paddingHorizontalInput = document.getElementById('paddingHorizontal');
 const clearLogBtn = document.getElementById('clearLogBtn');
@@ -139,6 +141,7 @@ printBtn.addEventListener('click', async () => {
         printBtn.textContent = 'Printing...';
         
         const intensity = parseInt(printDensityInput.value);
+        const speed = parseInt(printSpeedInput.value);
         const paddingVertical = parseInt(paddingVerticalInput.value) || 0;
         const paddingHorizontal = parseInt(paddingHorizontalInput.value) || 0;
 
@@ -147,6 +150,7 @@ printBtn.addEventListener('click', async () => {
         // We will pass these options to manager, and manager passes to blocks.
         await manager.printAll({
             intensity,
+            speed,
             paddingVertical,
             paddingHorizontal
         });
@@ -195,6 +199,11 @@ previewBtn.addEventListener('click', () => {
 // Density Input
 printDensityInput.addEventListener('input', (e) => {
     printDensityDisplay.textContent = e.target.value;
+});
+
+// Speed Input
+printSpeedInput.addEventListener('input', (e) => {
+    printSpeedDisplay.textContent = e.target.value;
 });
 
 // Log UI
