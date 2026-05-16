@@ -126,7 +126,10 @@ export class QRBlock extends BaseBlock {
                 this.fieldsContainer.appendChild(this.createInput('lastName', 'Last Name'));
                 this.fieldsContainer.appendChild(this.createInput('phone', 'Phone Number', 'tel'));
                 this.fieldsContainer.appendChild(this.createInput('email', 'Email Address', 'email'));
-                this.fieldsContainer.appendChild(this.createTextarea('medical', 'Medical Information'));
+                this.fieldsContainer.appendChild(this.createTextarea('conditions', 'Medical Conditions'));
+                this.fieldsContainer.appendChild(this.createTextarea('medications', 'Medications'));
+                this.fieldsContainer.appendChild(this.createInput('bloodType', 'Blood Type'));
+                this.fieldsContainer.appendChild(this.createTextarea('notes', 'Additional Notes'));
                 break;
             case 'whatsapp':
                 this.fieldsContainer.appendChild(this.createInput('phone', 'Phone Number (with country code)', 'tel'));
@@ -166,11 +169,18 @@ export class QRBlock extends BaseBlock {
                 vcard += `FN:${this.data.firstName || ''} ${this.data.lastName || ''}\n`;
                 if (this.data.phone) vcard += `TEL;TYPE=CELL:${this.data.phone}\n`;
                 if (this.data.email) vcard += `EMAIL:${this.data.email}\n`;
-                if (this.data.medical) {
-                    // Escape newlines for vcard note
-                    const note = this.data.medical.replace(/\n/g, '\\n');
-                    vcard += `NOTE:Medical Info:\\n${note}\n`;
+
+                let combinedNotes = [];
+                if (this.data.conditions) combinedNotes.push(`Conditions: ${this.data.conditions}`);
+                if (this.data.medications) combinedNotes.push(`Medications: ${this.data.medications}`);
+                if (this.data.bloodType) combinedNotes.push(`Blood Type: ${this.data.bloodType}`);
+                if (this.data.notes) combinedNotes.push(`Notes: ${this.data.notes}`);
+
+                if (combinedNotes.length > 0) {
+                    const noteStr = combinedNotes.join('\n').replace(/\n/g, '\\n');
+                    vcard += `NOTE:${noteStr}\n`;
                 }
+
                 vcard += `END:VCARD`;
                 return vcard;
             case 'whatsapp':
