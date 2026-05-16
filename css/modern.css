@@ -472,3 +472,30 @@ main {
 .settings-row input {
     width: 100%;
 }
+
+/* Additional QR Block Styles */
+.qr-format-select {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    background-color: #fff;
+}
+
+.qr-fields-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.qr-textarea {
+    resize: vertical;
+    min-height: 60px;
+    font-family: inherit;
+}
+
+.qr-select {
+    background-color: #fff;
+}
